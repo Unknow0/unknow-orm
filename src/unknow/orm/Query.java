@@ -6,7 +6,7 @@
  * http://www.gnu.org/licenses/lgpl-3.0.html
  * 
  * Contributors:
- *     Unknow - initial API and implementation
+ * Unknow - initial API and implementation
  ******************************************************************************/
 package unknow.orm;
 
@@ -22,12 +22,12 @@ import unknow.orm.mapping.*;
 public class Query implements AutoCloseable
 	{
 	private Map<String,Integer> paramPos=new HashMap<String,Integer>();
-	private Map<String,Class<?>> aliasMapping=new HashMap<String, Class<?>>();
-	
+	private Map<String,Class<?>> aliasMapping=new HashMap<String,Class<?>>();
+
 	private Database db;
 	private Connection co=null;
 	private PreparedStatement st=null;
-	
+
 	private Result result=null;
 
 	public Query(Database db, CharSequence query, String[] alias, Class<?>[] entities) throws SQLException
@@ -38,14 +38,14 @@ public class Query implements AutoCloseable
 		aliasMapping=new HashMap<String,Class<?>>();
 		for(int i=0; i<alias.length; i++)
 			aliasMapping.put(alias[i], entities[i]);
-		init(query);
+		init(query, Statement.NO_GENERATED_KEYS);
 		}
 
 	public Query(Database db, CharSequence query, Map<String,Class<?>> aliasMapping) throws SQLException
 		{
 		this.db=db;
 		this.aliasMapping.putAll(aliasMapping);
-		init(query);
+		init(query, Statement.NO_GENERATED_KEYS);
 		}
 
 	public Query(Database db, String query) throws SQLException
@@ -53,7 +53,30 @@ public class Query implements AutoCloseable
 		this(db, query, new HashMap<String,Class<?>>());
 		}
 
-	private void init(CharSequence query) throws SQLException
+	public Query(Database db, CharSequence query, String[] alias, Class<?>[] entities, int genKey) throws SQLException
+		{
+		this.db=db;
+		if(alias.length!=entities.length)
+			throw new SQLException("alias & entity size missmatch");
+		aliasMapping=new HashMap<String,Class<?>>();
+		for(int i=0; i<alias.length; i++)
+			aliasMapping.put(alias[i], entities[i]);
+		init(query, genKey);
+		}
+
+	public Query(Database db, CharSequence query, Map<String,Class<?>> aliasMapping, int genKey) throws SQLException
+		{
+		this.db=db;
+		this.aliasMapping.putAll(aliasMapping);
+		init(query, genKey);
+		}
+
+	public Query(Database db, String query, int genKey) throws SQLException
+		{
+		this(db, query, new HashMap<String,Class<?>>());
+		}
+
+	private void init(CharSequence query, int genKey) throws SQLException
 		{
 		StringBuilder sb=new StringBuilder();
 		StringBuilder tmp=new StringBuilder();
@@ -85,7 +108,7 @@ public class Query implements AutoCloseable
 					break;
 				case ':':
 					c=query.charAt(++i);
-					while (Character.isLetter(c) && i<len)
+					while (Character.isLetter(c)&&i<len)
 						{
 						tmp.append(c);
 						if(++i<len)
@@ -105,7 +128,7 @@ public class Query implements AutoCloseable
 		co=db.getConnection();
 		st=co.prepareStatement(sb.toString());
 		}
-	
+
 	public QueryResult execute() throws SQLException
 		{
 		if(result!=null)
@@ -739,7 +762,12 @@ public class Query implements AutoCloseable
 			throw new SQLException("param '"+param+"' not in this query");
 		st.setURL(parameterIndex, x);
 		}
-	
+
+	public PreparedStatement statement()
+		{
+		return st;
+		}
+
 	private static class Result extends QueryResult
 		{
 		public Result(Database db, ResultSet rs, Map<String,Class<?>> mapping)
