@@ -3,7 +3,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>unknow.orm</groupId>
 	<artifactId>orm</artifactId>
-	<version>r0</version>
+	<version>1.0-SNAPSHOT</version>
 
 	<name>Unknow orm</name>
 	<description>Simlpe ORM</description>
@@ -66,12 +66,12 @@
 		<dependency>
 			<groupId>unknow.json</groupId>
 			<artifactId>json</artifactId>
-			<version>r0</version>
+			<version>1.0-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>unknow.common</groupId>
 			<artifactId>unknow-common</artifactId>
-			<version>r0</version>
+			<version>1.0-SNAPSHOT</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.logging.log4j</groupId>

@@ -99,10 +99,10 @@ public class Query implements AutoCloseable
 					if(aliasMapping==null||!aliasMapping.containsKey(alias))
 						throw new SQLException("alias '"+alias+"' not in alias mapping");
 					Class<?> clazz=aliasMapping.get(alias);
-					Table table=db.getMapping(clazz);
-					if(table==null)
+					Entity<?> e=db.getMapping(clazz);
+					if(e==null)
 						throw new SQLException("no mapping found for '"+clazz+"'");
-					table.append(sb, alias);
+					e.append(sb, alias);
 					tmp.setLength(0);
 					i++;
 					break;

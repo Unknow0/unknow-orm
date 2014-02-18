@@ -20,6 +20,7 @@ import javax.sql.*;
 import org.apache.logging.log4j.*;
 
 import unknow.json.*;
+import unknow.json.JsonValue.JsonString;
 import unknow.orm.*;
 
 public class Database
@@ -28,13 +29,13 @@ public class Database
 	private static final String[] types= {"VIEW", "TABLE"};
 	private static final Logger logger=LogManager.getFormatterLogger(Database.class);
 
-	private Map<Class<?>,Table> mapping=new HashMap<Class<?>,Table>();
+	private Map<Class<?>,Entity<?>> mapping=new HashMap<Class<?>,Entity<?>>();
 
-	private Map<String,TypeConvert> typesMapping=new HashMap<String,TypeConvert>();
+	private TypeConvertor[] typesMapping;
 
 	private DataSource ds;
 
-	private List<Table> tables=new ArrayList<Table>();
+	private Map<String,Table> tables=new HashMap<String,Table>();
 
 	/**
 	 * @param ds datasource to use.
@@ -43,10 +44,71 @@ public class Database
 	public Database(DataSource ds, JsonObject cfg) throws SQLException, JsonException, ClassNotFoundException, ClassCastException
 		{
 		this.ds=ds;
-		loadTablesDesc(cfg);
+		loadTablesDesc();
+		loadDaos(cfg);
+		}
+	
+	@SuppressWarnings("unchecked")
+	private void loadDaos(JsonObject daosCfg) throws SQLException, JsonException
+		{
+		for(String clazz: daosCfg)
+			{
+			try
+				{
+				Class<?> c=Class.forName(clazz);
+				JsonArray a=daosCfg.getJsonArray(clazz);
+				Set<Entity.Entry>[] cols=new Set[a.length()]; 
+				for(int i=0; i<a.length(); i++)
+					{
+					JsonValue v=a.get(i);
+					Set<Entity.Entry> set=new HashSet<Entity.Entry>();
+					if (v instanceof JsonObject)
+						{
+						JsonObject o=(JsonObject)v;
+						String table=o.getString("table");
+						JsonValue colcfg=o.get("columns");
+						logger.info("load dao for %s\n", table);
+						Table t=tables.get(table);
+						for(Column col: t.getColumns())
+							{
+							Entity.Entry e=null;
+							if(colcfg instanceof JsonObject)
+								{
+								JsonValue opt=((JsonObject)colcfg).opt(col.getName());
+								if(opt instanceof JsonString)
+									e=new Entity.Entry(col, ((JsonString)opt).value(), null);
+								else if (opt instanceof JsonObject)
+									{
+									JsonObject obj=(JsonObject)opt;
+									e=new Entity.Entry(col, obj.optString("jname"), obj.optString("setter"));
+									}
+								}
+							if(e!=null)
+								set.add(e);
+							}
+						}
+					else if(v instanceof JsonString)
+						{
+						String table=((JsonString)v).value();
+						Table t=tables.get(table);
+						for(Column col: t.getColumns())
+							set.add(new Entity.Entry(col, null, null));
+						}
+					else
+						throw new JsonException("Expected JsonObject or JsonString for '"+clazz+"' daos");
+
+					cols[i]=set;
+					}
+				mapping.put(c, new Entity<>(this, c, cols));
+				}
+			catch (ClassNotFoundException e)
+				{
+				throw new SQLException("no class found for '"+clazz+"'");
+				}
+			}
 		}
 
-	private void loadTablesDesc(JsonObject dbcfg) throws SQLException, JsonException, ClassNotFoundException, ClassCastException
+	private void loadTablesDesc() throws SQLException, JsonException, ClassNotFoundException, ClassCastException
 		{
 		try (Connection co=ds.getConnection())
 			{
@@ -62,14 +124,8 @@ public class Database
 					String remark=rs.getString("REMARKS");
 
 					logger.trace("Found table '%s'", name);
-					JsonObject tablecfg=dbcfg.optJsonObject(name);
-					if(tablecfg!=null)
-						{
-						Table table=new Table(this, metaData, tablecfg, name, schema, catalog, remark);
-						tables.add(table);
-						}
-					else
-						logger.trace("	not in cfg skipping");
+					Table table=new Table(metaData, name, schema, catalog, remark);
+					tables.put(table.getName(), table);
 					}
 				}
 			}
@@ -77,9 +133,14 @@ public class Database
 
 	public Object convert(int sqlType, String type, ResultSet rs, String name) throws SQLException
 		{
-		TypeConvert typeConvert=typesMapping.get(type);
-		if(typeConvert!=null)
-			return typeConvert.convert(sqlType, type, rs, name);
+		if(typesMapping!=null)
+			{
+			for(TypeConvertor typeConvert: typesMapping)
+				{
+				if(typeConvert.canConvert(sqlType, type))
+					return typeConvert.convert(sqlType, type, rs, name);
+				}
+			}
 		switch (sqlType)
 			{
 			case Types.ARRAY:
@@ -136,15 +197,20 @@ public class Database
 			case Types.OTHER:
 			case Types.STRUCT:
 			default:
-				throw new SQLException("no converssion found for type '"+type+"'");
+				throw new SQLException("no conversion found for type '"+type+"'");
 			}
 		}
 
 	public Class<?> toJavaType(int sqlType, String type) throws SQLException
 		{
-		TypeConvert typeConvert=typesMapping.get(type);
-		if(typeConvert!=null)
-			return typeConvert.toJavaType(sqlType, type);
+		if(typesMapping!=null)
+			{
+			for(TypeConvertor typeConvert: typesMapping)
+				{
+				if(typeConvert.canConvert(sqlType, type))
+					return typeConvert.toJavaType(sqlType, type);
+				}
+			}
 		switch (sqlType)
 			{
 			case Types.ARRAY:
@@ -201,24 +267,25 @@ public class Database
 			case Types.OTHER:
 			case Types.STRUCT:
 			default:
-				throw new SQLException("no converssion found for type '"+type+"'");
+				throw new SQLException("no conversion found for type '"+type+"'");
 			}
 		}
 
-	public Table getMapping(Class<?> entity)
+	@SuppressWarnings("unchecked")
+	public <T> Entity<T> getMapping(Class<T> entity)
 		{
-		return mapping.get(entity);
+		return (Entity<T>)mapping.get(entity);
 		}
 
-	public void addTypesMapping(String type, TypeConvert convert)
+	public void setTypesMapping(TypeConvertor[] types)
 		{
-		typesMapping.put(type, convert);
+		typesMapping=types;
 		}
 
-	public void addMapping(String cl, Table table) throws ClassNotFoundException, ClassCastException
+	public void addMapping(String cl, Entity<?> entity) throws ClassNotFoundException, ClassCastException
 		{
 		Class<?> clazz=Class.forName(cl);
-		mapping.put(clazz, table);
+		mapping.put(clazz, entity);
 		}
 
 	public Connection getConnection() throws SQLException

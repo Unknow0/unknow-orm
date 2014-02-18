@@ -12,17 +12,13 @@ package unknow.orm.mapping;
 
 public class Column
 	{
-	private String javaName;
-	private String setter;
 	private String name;
 	private int sqlType;
 	private String type;
 	private String remark;
 
-	public Column(String javaName, String setter, String colName, int sqlType, String type, String remark)
+	public Column(String colName, int sqlType, String type, String remark)
 		{
-		this.javaName=javaName;
-		this.setter=setter;
 		this.name=colName;
 		this.sqlType=sqlType;
 		this.type=type;
@@ -33,17 +29,7 @@ public class Column
 		{
 		return name;
 		}
-
-	public String getJavaName()
-		{
-		return javaName;
-		}
 	
-	public String getSetter()
-		{
-		return setter;
-		}
-
 	public int getSqlType()
 		{
 		return sqlType;

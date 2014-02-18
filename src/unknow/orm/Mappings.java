@@ -6,7 +6,7 @@
  * http://www.gnu.org/licenses/lgpl-3.0.html
  * 
  * Contributors:
- *     Unknow - initial API and implementation
+ * Unknow - initial API and implementation
  ******************************************************************************/
 package unknow.orm;
 
@@ -18,28 +18,29 @@ import javax.sql.*;
 
 import unknow.common.*;
 import unknow.json.*;
+import unknow.json.JsonValue.JsonString;
 import unknow.orm.ds.*;
 import unknow.orm.mapping.*;
 
 public class Mappings
 	{
 	private static Map<String,Database> mapping=new HashMap<String,Database>();
-	
+
 	public static void load(String key, Cfg cfg) throws JsonException, SQLException, ClassNotFoundException, ClassCastException, InstantiationException, IllegalAccessException, NamingException
 		{
 		JsonObject o=cfg.getJsonObject(key);
-		for(String db: o)
+		for(String db:o)
 			{
 			loadMapping(db, o.getJsonObject(db));
 			}
 		}
-	
+
 	public static void loadMapping(String dbName, JsonObject dbCfg) throws JsonException, SQLException, ClassNotFoundException, ClassCastException, InstantiationException, IllegalAccessException, NamingException
 		{
-		JsonObject tables=dbCfg.getJsonObject("tables");
+		JsonObject daos=dbCfg.getJsonObject("daos");
 		JsonObject o=dbCfg.getJsonObject("connection");
 		String type=o.getString("type");
-		DataSource ds= null;
+		DataSource ds=null;
 		if(type.equals("jdbc"))
 			{
 			String url=o.getString("url");
@@ -57,22 +58,26 @@ public class Mappings
 			}
 		else
 			throw new JsonException("unknown connection type '"+type+"'.");
-		
-		Database database=new Database(ds, tables);
+
+		Database database=new Database(ds, daos);
 		mapping.put(dbName, database);
-		
-		o=dbCfg.optJsonObject("types");
-		if(o!=null)
+
+		JsonArray a=dbCfg.optJsonArray("types");
+		if(a!=null)
 			{
-			for(String t: o)
+			TypeConvertor[] t=new TypeConvertor[a.length()];
+			for(int i=0; i<a.length(); i++)
 				{
-				Class<?> clazz=Class.forName(o.getString(t));
-				TypeConvert newInstance=(TypeConvert)clazz.newInstance();
-				database.addTypesMapping(t, newInstance);
+				if(a.get(i) instanceof JsonString)
+					{
+					Class<?> clazz=Class.forName(((JsonString)a.get(i)).value());
+					t[i]=(TypeConvertor)clazz.newInstance();
+					}
 				}
+			database.setTypesMapping(t);
 			}
 		}
-	
+
 	public static Database getDatabase(String database)
 		{
 		return mapping.get(database);

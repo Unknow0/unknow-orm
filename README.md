@@ -10,42 +10,52 @@ Cfg format
 	{
 	<database name>:
 		{
-		"tables":
+		"daos":
 			{
-			<table name>:
-				{
-				"class": <full qualified class>,
-				"columns":
-					// if database column name are the same as java.
-					[
-					<col name>,
-					<col name>
-					...
-					]
-					// or if they aren't
+			<full qualified class>:
+				[
 					{
-					<col name>: <java name>,
-					...
-					},
-				"connection":
-					{
-					"type": "jdbc",
-					"url": <url>,
-					"user": <user>,
-					"pass": <pass>,
-					"max_idle": <max idle>	// if omited database connection won't be pooled
+					"table": <table name>,
+					"columns":
+						// if database column name are the same as java.
+						[
+						<col name>,
+						<col name>
+						...
+						]
+						// or if they aren't
+						{
+						<col name>: <java name>,
+						...
+						// or if setter aren't set<Jname>
+						<col name>:
+							{
+							"jname": <java name>,
+							"setter": <setter function>
+							}
+						}
+						...
 					}
-					or
-					{
-					"type": "jndi",
-					"url": <jndi url>
-					},
-				"types":
-					{
-					<sql type name>: <full qualified class>	// assign a TypesConvert to this sql type
-					...
-					}
-				}
+					// if this dao use more than one table
+				]
+			},
+		"connection":
+			{
+			"type": "jdbc",
+			"url": <url>,
+			"user": <user>,
+			"pass": <pass>,
+			"max_idle": <max idle>	// if omited database connection won't be pooled
 			}
+			or
+			{
+			"type": "jndi",
+			"url": <jndi url>
+			},
+		"types":
+			[
+			<full qualified class>	// add a TypeConvertor, they will be cecked in this order
+			...
+			]
 		}
 	}

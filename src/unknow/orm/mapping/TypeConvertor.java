@@ -12,8 +12,10 @@ package unknow.orm.mapping;
 
 import java.sql.*;
 
-public interface TypeConvert
+public interface TypeConvertor
 	{
+	public boolean canConvert(int sqlType, String type);
+	
 	public Object convert(int sqlType, String type, ResultSet rs, String name) throws SQLException;
 	
 	public Class<?> toJavaType(int sqlType, String type) throws SQLException;
