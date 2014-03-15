@@ -14,29 +14,8 @@ Cfg format
 			{
 			<full qualified class>:
 				[
-					{
-					"table": <table name>,
-					"columns":
-						// if database column name are the same as java.
-						[
-						<col name>,
-						<col name>
-						...
-						]
-						// or if they aren't
-						{
-						<col name>: <java name>,
-						...
-						// or if setter aren't set<Jname>
-						<col name>:
-							{
-							"jname": <java name>,
-							"setter": <setter function>
-							}
-						}
-						...
-					}
-					// if this dao use more than one table
+					<table cfg>
+					// or more table if this object use multiple tables
 				]
 			},
 		"connection":
@@ -54,8 +33,56 @@ Cfg format
 			},
 		"types":
 			[
-			<full qualified class>	// add a TypeConvertor, they will be cecked in this order
+			<full qualified class>	// add a TypeConvertor, they will be checked in this order
 			...
 			]
 		}
 	}
+
+===== Table cfg
+	{
+	"table": <table name>,
+	"columns": <columns cfg>
+	"fields": <fields cfg>
+	}
+
+====== Column cfg
+if database column name are the same as java.
+	[
+	<col name>,
+	<col name>
+	...
+	]
+	
+if they aren't
+	{
+	<col name>: <java name>,
+	...
+	}
+
+also you can specify setter if you don't use `set<Jname>`
+	{
+	<col name>:
+		{
+		"jname": <java name>,
+		"setter": <setter function>
+		}
+	}
+
+===== Field cfg
+
+	{
+	<field name>: <column name>
+	...
+	}
+
+if your field is another Dao/Pojo:
+	{
+	<field name>:
+		{
+		"class": <full calified class>
+		"columns": <columns cfg>
+		"fields": <fields cfg>
+		}
+	}
+

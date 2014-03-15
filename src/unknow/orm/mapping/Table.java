@@ -58,6 +58,17 @@ public class Table
 		return columns;
 		}
 
+	/** @return The column with name name or null if not found */
+	public Column getColumn(String name)
+		{
+		for(int i=0; i<columns.length; i++)
+			{
+			if(columns[i].getName().equals(name))
+				return columns[i];
+			}
+		return null;
+		}
+
 	public String getName()
 		{
 		return name;

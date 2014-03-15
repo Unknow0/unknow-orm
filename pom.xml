@@ -17,7 +17,7 @@
 	</licenses>
 	<scm>
 		<url>https://github.com/Unknow0/unknow-orm.git</url>
-		<connection>https://github.com/Unknow0/unknow-orm.git</connection>
+		<connection>scm:git:https://github.com/Unknow0/unknow-orm.git</connection>
 	</scm>
 	<developers>
 		<developer>
@@ -26,6 +26,12 @@
 			<email>unknow0@wanadoo.fr</email>
 		</developer>
 	</developers>
+	
+	<parent>
+		<groupId>unknow</groupId>
+		<artifactId>root</artifactId>
+		<version>1.0</version>
+	</parent>
 
 	<build>
 		<sourceDirectory>src</sourceDirectory>

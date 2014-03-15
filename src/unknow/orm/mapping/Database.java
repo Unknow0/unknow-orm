@@ -22,6 +22,7 @@ import org.apache.logging.log4j.*;
 import unknow.json.*;
 import unknow.json.JsonValue.JsonString;
 import unknow.orm.*;
+import unknow.orm.mapping.Entity.Entry;
 
 public class Database
 	{
@@ -47,59 +48,101 @@ public class Database
 		loadTablesDesc();
 		loadDaos(cfg);
 		}
-	
+
+	private void loadCol(Set<Entry> entries, Table table, JsonValue colcfg)
+		{
+		for(Column col:table.getColumns())
+			{
+			Entity.ColEntry e=null;
+			if(colcfg instanceof JsonObject)
+				{
+				JsonValue opt=((JsonObject)colcfg).opt(col.getName());
+				if(opt instanceof JsonString)
+					e=new Entity.ColEntry(col, ((JsonString)opt).value(), null);
+				else if(opt instanceof JsonObject)
+					{
+					JsonObject obj=(JsonObject)opt;
+					e=new Entity.ColEntry(col, obj.optString("jname"), obj.optString("setter"));
+					}
+				}
+			if(e!=null)
+				entries.add(e);
+			}
+		}
+
+	@SuppressWarnings("unchecked")
+	public void loadField(Table table, JsonObject fields, Set<Entity.Entry> entries) throws JsonException, ClassNotFoundException
+		{
+		for(String jname:fields)
+			{
+			JsonValue fieldcfg=fields.get(jname);
+			if(fieldcfg instanceof JsonString)
+				{
+				Column col=table.getColumn(((JsonString)fieldcfg).value());
+				if(col!=null)
+					entries.add(new Entity.ColEntry(col, jname, null));
+				}
+			else if(fieldcfg instanceof JsonObject)
+				{
+				JsonObject o=(JsonObject)fieldcfg;
+				Class<?> clazz=Class.forName(o.getString("class"));
+
+				Set<Entity.Entry> set=new HashSet<Entity.Entry>();
+
+				JsonValue colcfg=o.opt("columns");
+				if(colcfg!=null)
+					loadCol(set, table, colcfg);
+
+				JsonObject fc=o.optJsonObject("fields");
+				if(fc!=null)
+					loadField(table, fc, set);
+				
+				entries.add(new Entity.EntityEntry(new Entity<>(clazz, new Set[]{set}), jname, null));
+				}
+			}
+		}
+
 	@SuppressWarnings("unchecked")
 	private void loadDaos(JsonObject daosCfg) throws SQLException, JsonException
 		{
-		for(String clazz: daosCfg)
+		for(String clazz:daosCfg)
 			{
 			try
 				{
 				Class<?> c=Class.forName(clazz);
 				JsonArray a=daosCfg.getJsonArray(clazz);
-				Set<Entity.Entry>[] cols=new Set[a.length()]; 
+				Set<Entity.Entry>[] cols=new Set[a.length()];
 				for(int i=0; i<a.length(); i++)
 					{
 					JsonValue v=a.get(i);
-					Set<Entity.Entry> set=new HashSet<Entity.Entry>();
-					if (v instanceof JsonObject)
+					Set<Entity.Entry> entries=new HashSet<Entity.Entry>();
+					if(v instanceof JsonObject)
 						{
 						JsonObject o=(JsonObject)v;
 						String table=o.getString("table");
-						JsonValue colcfg=o.get("columns");
+						JsonValue colcfg=o.opt("columns");
+						JsonObject fields=o.optJsonObject("fields");
 						logger.info("load dao for %s\n", table);
 						Table t=tables.get(table);
-						for(Column col: t.getColumns())
-							{
-							Entity.Entry e=null;
-							if(colcfg instanceof JsonObject)
-								{
-								JsonValue opt=((JsonObject)colcfg).opt(col.getName());
-								if(opt instanceof JsonString)
-									e=new Entity.Entry(col, ((JsonString)opt).value(), null);
-								else if (opt instanceof JsonObject)
-									{
-									JsonObject obj=(JsonObject)opt;
-									e=new Entity.Entry(col, obj.optString("jname"), obj.optString("setter"));
-									}
-								}
-							if(e!=null)
-								set.add(e);
-							}
+
+						if(colcfg!=null)
+							loadCol(entries, t, colcfg);
+						if(fields!=null)
+							loadField(t, fields, entries);
 						}
 					else if(v instanceof JsonString)
 						{
 						String table=((JsonString)v).value();
 						Table t=tables.get(table);
-						for(Column col: t.getColumns())
-							set.add(new Entity.Entry(col, null, null));
+						for(Column col:t.getColumns())
+							entries.add(new Entity.ColEntry(col, null, null));
 						}
 					else
 						throw new JsonException("Expected JsonObject or JsonString for '"+clazz+"' daos");
 
-					cols[i]=set;
+					cols[i]=entries;
 					}
-				mapping.put(c, new Entity<>(this, c, cols));
+				mapping.put(c, new Entity<>(c, cols));
 				}
 			catch (ClassNotFoundException e)
 				{
@@ -135,7 +178,7 @@ public class Database
 		{
 		if(typesMapping!=null)
 			{
-			for(TypeConvertor typeConvert: typesMapping)
+			for(TypeConvertor typeConvert:typesMapping)
 				{
 				if(typeConvert.canConvert(sqlType, type))
 					return typeConvert.convert(sqlType, type, rs, name);
@@ -205,7 +248,7 @@ public class Database
 		{
 		if(typesMapping!=null)
 			{
-			for(TypeConvertor typeConvert: typesMapping)
+			for(TypeConvertor typeConvert:typesMapping)
 				{
 				if(typeConvert.canConvert(sqlType, type))
 					return typeConvert.toJavaType(sqlType, type);

@@ -17,10 +17,13 @@ import java.sql.*;
 import java.sql.Date;
 import java.util.*;
 
+import org.apache.logging.log4j.*;
+
 import unknow.orm.mapping.*;
 
 public class Query implements AutoCloseable
 	{
+	private static final Logger logger=LogManager.getLogger(Query.class);
 	private Map<String,Integer> paramPos=new HashMap<String,Integer>();
 	private Map<String,Class<?>> aliasMapping=new HashMap<String,Class<?>>();
 
@@ -133,6 +136,7 @@ public class Query implements AutoCloseable
 		{
 		if(result!=null)
 			result.close();
+		logger.trace(st.toString());
 		result=new Result(db, st.executeQuery(), aliasMapping);
 		return result;
 		}

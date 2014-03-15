@@ -206,6 +206,6 @@ public abstract class QueryResult
 		if(clazz==null)
 			throw new SQLException("Alias '"+alias+"' not mapped");
 		Entity<?> e=db.getMapping(clazz);
-		return e.build(alias, rs);
+		return e.build(db, alias, rs);
 		}
 	}

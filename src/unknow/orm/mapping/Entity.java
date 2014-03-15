@@ -1,97 +1,130 @@
+/*******************************************************************************
+ * Copyright (c) 2014 Unknow.
+ * All rights reserved. This program and the accompanying materials
+ * are made available under the terms of the GNU Lesser Public License v3
+ * which accompanies this distribution, and is available at
+ * http://www.gnu.org/licenses/lgpl-3.0.html
+ * 
+ * Contributors:
+ * Unknow - initial API and implementation
+ ******************************************************************************/
 package unknow.orm.mapping;
 
 import java.lang.reflect.*;
 import java.sql.*;
 import java.util.*;
 
+import org.apache.logging.log4j.*;
+
+import unknow.common.*;
+
 public class Entity<T>
 	{
+	private static final Logger logger=LogManager.getLogger(Entity.class);
+	
 	private Class<T> clazz;
 
-	private Set<Entry>[] columns;
+	private Set<Entry>[] entities;
 
-	private Database database;
-
-	public Entity(Database db, Class<T> cl, Set<Entry>[] col)
+	public Entity(Class<T> cl, Set<Entry>[] ent)
 		{
-		database=db;
 		clazz=cl;
-		columns=col;
+		entities=ent;
 		}
 
 	public void append(StringBuilder sql, String alias) throws SQLException
 		{
 		String[] a=alias.split(",");
-		if(a.length!=columns.length)
+		if(a.length!=entities.length)
 			throw new SQLException("aliases count differ from table count");
 		boolean first=true;
 		for(int i=0; i<a.length; i++)
 			{
-			for(Entry e:columns[i])
+			for(Entry e:entities[i])
 				{
-				String col=e.col.getName();
 				if(!first)
 					sql.append(',');
 				else
 					first=false;
-				sql.append(a[i]).append('.').append(col);
-				sql.append(" as ");
-				sql.append('"').append(a[i]).append('.').append(col).append('"');
+				if(e instanceof ColEntry)
+					{
+					String col=((ColEntry)e).col.getName();
+					sql.append(a[i]).append('.').append(col);
+					sql.append(" as ");
+					sql.append('"').append(a[i]).append('.').append(col).append('"');
+					}
+				else
+					((EntityEntry)e).entity.append(sql, a[i]);
 				}
+
 			}
 		}
 
-	public T build(String alias, ResultSet rs) throws SQLException
+	public T build(Database database, String alias, ResultSet rs) throws SQLException
 		{
 		String[] a=alias.split(",");
-		if(a.length!=columns.length)
-			throw new SQLException("aliases count differ from table count");
+		if(a.length!=entities.length)
+			throw new SQLException("aliases count differs from table count");
 		try
 			{
 			T entity=clazz.newInstance();
 			for(int i=0; i<a.length; i++)
 				{
-				for(Entry c:columns[i])
+				for(Entry e:entities[i])
 					{
-					Class<?> type=database.toJavaType(c.col.getSqlType(), c.col.getType());
-					Object value=database.convert(c.col.getSqlType(), c.col.getType(), rs, a[i]+"."+c.col.getName());
+					Class<?> type;
+					Object value;
+					if(e instanceof ColEntry)
+						{
+						ColEntry c=(ColEntry)e;
+						type=database.toJavaType(c.col.getSqlType(), c.col.getType());
+						value=database.convert(c.col.getSqlType(), c.col.getType(), rs, a[i]+"."+c.col.getName());
+						}
+					else
+						{
+						value=((EntityEntry)e).entity.build(database, a[i], rs);
+						type=value.getClass();
+						}
 					try
 						{
 						try
 							{
-							Method m=clazz.getMethod(c.setter, type);
-							m.invoke(entity, value);
-							continue;
+							Method m=Reflection.getMethod(clazz, e.setter, type);
+							if(m!=null)
+								{
+								m.invoke(entity, value);
+								continue;
+								}
 							}
-						catch (NoSuchMethodException e)
+						catch (IllegalArgumentException ex)
 							{
+							logger.warn("fail to call '"+e.setter+"' on '"+entity+"'", ex);
 							}
-						catch (IllegalArgumentException e)
-							{ // TODO logger
-							}
-						catch (InvocationTargetException e)
+						catch (InvocationTargetException ex)
 							{
+							logger.warn("fail to call '"+e.setter+"' on '"+entity+"'", ex);
 							}
 						try
 							{
-							Field field=clazz.getDeclaredField(c.javaName);
+							Field field=clazz.getDeclaredField(e.javaName);
 							field.set(entity, value);
 							}
-						catch (NoSuchFieldException e)
+						catch (NoSuchFieldException ex)
 							{
-							throw new SQLException("no accessible '"+c.setter+"("+type.getName()+")' or '"+c.javaName+"' in '"+clazz.getName()+"'");
+							throw new SQLException("no accessible '"+e.setter+"("+type.getName()+")' or '"+e.javaName+"' in '"+clazz.getName()+"'");
 							}
-						catch (SecurityException e)
+						catch (SecurityException ex)
 							{
-							throw new SQLException("can't set '"+c.javaName+"' in '"+clazz.getName()+"'", e);
+							throw new SQLException("can't set '"+e.javaName+"' in '"+clazz.getName()+"'", ex);
 							}
 						}
-					catch (IllegalAccessException e)
+					catch (IllegalAccessException ex)
 						{
-						throw new SQLException("can't execute '"+c.setter+"("+type.getName()+")' or set '"+c.javaName+"' in '"+clazz.getName()+"'", e);
+						throw new SQLException("can't execute '"+e.setter+"("+type.getName()+")' or set '"+e.javaName+"' in '"+clazz.getName()+"'", ex);
 						}
 					}
 				}
+			logger.trace("build '"+clazz+"' => '"+entity+"'");
 			return entity;
 			}
 		catch (InstantiationException e)
@@ -108,12 +141,38 @@ public class Entity<T>
 		{
 		public String setter;
 		public String javaName;
-		public Column col;
-		public Entry(Column col, String javaName, String setter)	// TODO setter & javaName format
+
+		public Entry(String javaName, String setter) // TODO setter & javaName format
 			{
-			this.col=col;
-			this.javaName=javaName!=null?javaName:col.getName();
+			this.javaName=javaName;
 			this.setter=setter!=null?setter:"set"+Character.toUpperCase(javaName.charAt(0))+javaName.substring(1);
+			}
+		}
+
+	static class ColEntry extends Entry
+		{
+		public Column col;
+
+		public ColEntry(Column col, String setter)
+			{
+			this(col, col.getName(), setter);
+			}
+
+		public ColEntry(Column col, String javaName, String setter)
+			{
+			super(javaName, setter);
+			this.col=col;
+			}
+		}
+
+	static class EntityEntry extends Entry
+		{
+		public Entity<?> entity;
+
+		public EntityEntry(Entity<?> entity, String javaName, String setter)
+			{
+			super(javaName, setter);
+			this.entity=entity;
 			}
 		}
 	}
