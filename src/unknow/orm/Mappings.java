@@ -47,10 +47,11 @@ public class Mappings
 			String user=o.getString("user");
 			String pass=o.getString("pass");
 			Integer idle=o.optInt("max_idle");
+			String driver=o.optString("driver");
 			if(idle==null)
-				ds=new SimpleDataSource(url, user, pass);
+				ds=new SimpleDataSource(url, user, pass, driver);
 			else
-				ds=new PooledDataSource(url, user, pass, idle);
+				ds=new PooledDataSource(url, user, pass, driver, idle);
 			}
 		else if(type.equals("jndi"))
 			{

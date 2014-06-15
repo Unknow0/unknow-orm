@@ -141,6 +141,26 @@ public class Query implements AutoCloseable
 		return result;
 		}
 
+	/** 
+	 * @return generatedKeys
+	 * @throws SQLException 
+	 */
+	public QueryResult executeInsert() throws SQLException
+		{
+		if(result!=null)
+			result.close();
+		st.executeUpdate();
+		result=new Result(db, st.getGeneratedKeys(), null);
+		return result;
+		}
+
+	public int executeUpdate() throws SQLException
+		{
+		if(result!=null)
+			result.close();
+		return st.executeUpdate();
+		}
+
 	public String toString()
 		{
 		return st.toString();

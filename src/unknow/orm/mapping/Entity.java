@@ -21,12 +21,12 @@ import unknow.common.*;
 public class Entity<T>
 	{
 	private static final Logger logger=LogManager.getLogger(Entity.class);
-	
+
 	private Class<T> clazz;
 
-	private Set<Entry>[] entities;
+	public final Map<String,Set<Entry>> entities;
 
-	public Entity(Class<T> cl, Set<Entry>[] ent)
+	public Entity(Class<T> cl, Map<String,Set<Entry>> ent)
 		{
 		clazz=cl;
 		entities=ent;
@@ -35,12 +35,13 @@ public class Entity<T>
 	public void append(StringBuilder sql, String alias) throws SQLException
 		{
 		String[] a=alias.split(",");
-		if(a.length!=entities.length)
+		if(a.length!=entities.size())
 			throw new SQLException("aliases count differ from table count");
 		boolean first=true;
-		for(int i=0; i<a.length; i++)
+		int i=0;
+		for(String table:entities.keySet())
 			{
-			for(Entry e:entities[i])
+			for(Entry e:entities.get(table))
 				{
 				if(!first)
 					sql.append(',');
@@ -56,21 +57,22 @@ public class Entity<T>
 				else
 					((EntityEntry)e).entity.append(sql, a[i]);
 				}
-
+			i++;
 			}
 		}
 
 	public T build(Database database, String alias, ResultSet rs) throws SQLException
 		{
 		String[] a=alias.split(",");
-		if(a.length!=entities.length)
+		if(a.length!=entities.size())
 			throw new SQLException("aliases count differs from table count");
 		try
 			{
 			T entity=clazz.newInstance();
-			for(int i=0; i<a.length; i++)
+			int i=0;
+			for(String table:entities.keySet())
 				{
-				for(Entry e:entities[i])
+				for(Entry e:entities.get(table))
 					{
 					Class<?> type;
 					Object value;
@@ -122,6 +124,7 @@ public class Entity<T>
 						{
 						throw new SQLException("can't execute '"+e.setter+"("+type.getName()+")' or set '"+e.javaName+"' in '"+clazz.getName()+"'", ex);
 						}
+					i++;
 					}
 				}
 			logger.trace("build '"+clazz+"' => '"+entity+"'");
@@ -137,35 +140,38 @@ public class Entity<T>
 			}
 		}
 
-	static class Entry
+	public static class Entry
 		{
 		public String setter;
 		public String javaName;
+		public String getter;
 
 		public Entry(String javaName, String setter) // TODO setter & javaName format
 			{
 			this.javaName=javaName;
 			this.setter=setter!=null?setter:"set"+Character.toUpperCase(javaName.charAt(0))+javaName.substring(1);
+			this.getter="get"+Character.toUpperCase(javaName.charAt(0))+javaName.substring(1);
 			}
 		}
 
-	static class ColEntry extends Entry
+	public static class ColEntry extends Entry
 		{
 		public Column col;
+		public Boolean aiKey;
 
-		public ColEntry(Column col, String setter)
+		public ColEntry(Column col, String jname, Boolean aiKey)
 			{
-			this(col, col.getName(), setter);
+			this(col, jname, null, aiKey);
 			}
 
-		public ColEntry(Column col, String javaName, String setter)
+		public ColEntry(Column col, String javaName, String setter, Boolean aiKey)
 			{
 			super(javaName, setter);
 			this.col=col;
 			}
 		}
 
-	static class EntityEntry extends Entry
+	public static class EntityEntry extends Entry
 		{
 		public Entity<?> entity;
 

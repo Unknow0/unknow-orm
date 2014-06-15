@@ -10,9 +10,7 @@
  ******************************************************************************/
 package unknow.orm.mapping;
 
-import java.math.*;
 import java.sql.*;
-import java.sql.Date;
 import java.util.*;
 
 import javax.sql.*;
@@ -22,6 +20,7 @@ import org.apache.logging.log4j.*;
 import unknow.json.*;
 import unknow.json.JsonValue.JsonString;
 import unknow.orm.*;
+import unknow.orm.mapping.Entity.ColEntry;
 import unknow.orm.mapping.Entity.Entry;
 
 public class Database
@@ -62,7 +61,7 @@ public class Database
 				else if(opt instanceof JsonObject)
 					{
 					JsonObject obj=(JsonObject)opt;
-					e=new Entity.ColEntry(col, obj.optString("jname"), obj.optString("setter"));
+					e=new Entity.ColEntry(col, obj.optString("jname"), obj.optString("setter"), obj.optBoolean("key"));
 					}
 				}
 			if(e!=null)
@@ -70,7 +69,6 @@ public class Database
 			}
 		}
 
-	@SuppressWarnings("unchecked")
 	public void loadField(Table table, JsonObject fields, Set<Entity.Entry> entries) throws JsonException, ClassNotFoundException
 		{
 		for(String jname:fields)
@@ -96,13 +94,14 @@ public class Database
 				JsonObject fc=o.optJsonObject("fields");
 				if(fc!=null)
 					loadField(table, fc, set);
-				
-				entries.add(new Entity.EntityEntry(new Entity<>(clazz, new Set[]{set}), jname, null));
+
+				Map<String,Set<Entry>> map=new HashMap<String,Set<Entry>>();
+				map.put(table.getName(), set);
+				entries.add(new Entity.EntityEntry(new Entity<>(clazz, map), jname, null));
 				}
 			}
 		}
 
-	@SuppressWarnings("unchecked")
 	private void loadDaos(JsonObject daosCfg) throws SQLException, JsonException
 		{
 		for(String clazz:daosCfg)
@@ -111,15 +110,16 @@ public class Database
 				{
 				Class<?> c=Class.forName(clazz);
 				JsonArray a=daosCfg.getJsonArray(clazz);
-				Set<Entity.Entry>[] cols=new Set[a.length()];
+				Map<String,Set<Entity.Entry>> cols=new HashMap<String,Set<Entity.Entry>>();
 				for(int i=0; i<a.length(); i++)
 					{
 					JsonValue v=a.get(i);
 					Set<Entity.Entry> entries=new HashSet<Entity.Entry>();
+					String table;
 					if(v instanceof JsonObject)
 						{
 						JsonObject o=(JsonObject)v;
-						String table=o.getString("table");
+						table=o.getString("table");
 						JsonValue colcfg=o.opt("columns");
 						JsonObject fields=o.optJsonObject("fields");
 						logger.info("load dao for %s\n", table);
@@ -132,7 +132,7 @@ public class Database
 						}
 					else if(v instanceof JsonString)
 						{
-						String table=((JsonString)v).value();
+						table=((JsonString)v).value();
 						Table t=tables.get(table);
 						for(Column col:t.getColumns())
 							entries.add(new Entity.ColEntry(col, null, null));
@@ -140,7 +140,7 @@ public class Database
 					else
 						throw new JsonException("Expected JsonObject or JsonString for '"+clazz+"' daos");
 
-					cols[i]=entries;
+					cols.put(table, entries);
 					}
 				mapping.put(c, new Entity<>(c, cols));
 				}
@@ -184,64 +184,7 @@ public class Database
 					return typeConvert.convert(sqlType, type, rs, name);
 				}
 			}
-		switch (sqlType)
-			{
-			case Types.ARRAY:
-				return rs.getArray(name);
-			case Types.BIGINT:
-				return rs.getLong(name);
-			case Types.BINARY:
-			case Types.LONGVARBINARY:
-			case Types.VARBINARY:
-			case Types.BIT:
-				return rs.getBytes(name);
-			case Types.BLOB:
-				return rs.getBlob(name);
-			case Types.BOOLEAN:
-				return rs.getBoolean(name);
-			case Types.CHAR:
-			case Types.LONGNVARCHAR:
-			case Types.LONGVARCHAR:
-			case Types.NCHAR:
-			case Types.NVARCHAR:
-			case Types.VARCHAR:
-				return rs.getString(name);
-			case Types.CLOB:
-			case Types.NCLOB:
-				return rs.getClob(name);
-			case Types.DATE:
-				return rs.getDate(name);
-			case Types.DECIMAL:
-			case Types.NUMERIC:
-			case Types.FLOAT:
-				return rs.getBigDecimal(name);
-			case Types.DOUBLE:
-			case Types.REAL:
-				return rs.getDouble(name);
-			case Types.INTEGER:
-				return rs.getInt(name);
-			case Types.NULL:
-				return null;
-			case Types.REF:
-				return rs.getRef(name);
-			case Types.ROWID:
-				return rs.getRowId(name);
-			case Types.SMALLINT:
-				return rs.getShort(name);
-			case Types.SQLXML:
-				return rs.getSQLXML(name);
-			case Types.TIME:
-				return rs.getTime(name);
-			case Types.TIMESTAMP:
-				return rs.getTimestamp(name);
-			case Types.TINYINT:
-				return rs.getByte(name);
-			case Types.JAVA_OBJECT:
-			case Types.OTHER:
-			case Types.STRUCT:
-			default:
-				throw new SQLException("no conversion found for type '"+type+"'");
-			}
+		return OrmUtils.convert(sqlType, type, rs, name);
 		}
 
 	public Class<?> toJavaType(int sqlType, String type) throws SQLException
@@ -254,64 +197,7 @@ public class Database
 					return typeConvert.toJavaType(sqlType, type);
 				}
 			}
-		switch (sqlType)
-			{
-			case Types.ARRAY:
-				return Array.class;
-			case Types.BIGINT:
-				return Long.class;
-			case Types.BINARY:
-			case Types.LONGVARBINARY:
-			case Types.VARBINARY:
-			case Types.BIT:
-				return Byte[].class;
-			case Types.BLOB:
-				return Blob.class;
-			case Types.BOOLEAN:
-				return Boolean.class;
-			case Types.CHAR:
-			case Types.LONGNVARCHAR:
-			case Types.LONGVARCHAR:
-			case Types.NCHAR:
-			case Types.NVARCHAR:
-			case Types.VARCHAR:
-				return String.class;
-			case Types.CLOB:
-			case Types.NCLOB:
-				return Clob.class;
-			case Types.DATE:
-				return Date.class;
-			case Types.DECIMAL:
-			case Types.NUMERIC:
-			case Types.FLOAT:
-				return BigDecimal.class;
-			case Types.DOUBLE:
-			case Types.REAL:
-				return Double.class;
-			case Types.INTEGER:
-				return Integer.class;
-			case Types.NULL:
-				return null;
-			case Types.REF:
-				return Ref.class;
-			case Types.ROWID:
-				return RowId.class;
-			case Types.SMALLINT:
-				return Short.class;
-			case Types.SQLXML:
-				return SQLXML.class;
-			case Types.TIME:
-				return Time.class;
-			case Types.TIMESTAMP:
-				return Timestamp.class;
-			case Types.TINYINT:
-				return Byte.class;
-			case Types.JAVA_OBJECT:
-			case Types.OTHER:
-			case Types.STRUCT:
-			default:
-				throw new SQLException("no conversion found for type '"+type+"'");
-			}
+		return OrmUtils.toJavaType(sqlType, type);
 		}
 
 	@SuppressWarnings("unchecked")
@@ -349,5 +235,102 @@ public class Database
 	public Query createQuery(String query, Map<String,Class<?>> aliasMapping) throws SQLException
 		{
 		return new Query(this, query, aliasMapping);
+		}
+
+	public Query createInsert(String query) throws SQLException
+		{
+		return new Query(this, query, Statement.RETURN_GENERATED_KEYS);
+		}
+
+	/**
+	 * @return number of row updated per table.
+	 */
+	public int[] update(Database db, Object o) throws SQLException
+		{
+		Entity<?> e=db.getMapping(o.getClass());
+		StringBuilder sql=new StringBuilder();
+		int[] ret=new int[e.entities.size()];
+		int r=0;
+		for(String table:e.entities.keySet())
+			{
+			sql.append("UPDATE  ");
+			sql.append(table);
+			sql.append(" SET ");
+
+			boolean first=true;
+			for(Entry en:e.entities.get(table))
+				{
+				if(!first)
+					sql.append(',');
+				else
+					first=false;
+				OrmUtils.appendUpdate(sql, table, en);
+				}
+			Query q=new Query(this, sql.toString(), Statement.NO_GENERATED_KEYS);
+			for(String t:e.entities.keySet())
+				{
+				int i=0;
+				for(Entry en:e.entities.get(t))
+					{
+					i=OrmUtils.appendValue(q, i, t, en, o);
+					}
+				}
+			ret[r++]=q.executeUpdate();
+			q.close();
+			}
+		return ret;
+		}
+
+	public void insert(Database db, Object o) throws SQLException
+		{
+		Entity<?> e=db.getMapping(o.getClass());
+		StringBuilder sql=new StringBuilder();
+
+		List<Entity.ColEntry> keys=new ArrayList<Entity.ColEntry>();
+		for(String table:e.entities.keySet())
+			{
+			keys.clear();
+			sql.append("INSERT INTO  ");
+			sql.append(table);
+			sql.append('(');
+			boolean first=true;
+			for(Entry en:e.entities.get(table))
+				{
+				if(!first)
+					sql.append(',');
+				else
+					first=false;
+				OrmUtils.appendColName(keys, sql, table, en);
+				}
+			sql.append(") VALUES (");
+
+			first=true;
+			for(Entry en:e.entities.get(table))
+				{
+				if(!first)
+					sql.append(',');
+				else
+					first=false;
+				OrmUtils.appendInsertValues(sql, table, en);
+				}
+			Query q=new Query(this, sql.toString(), Statement.RETURN_GENERATED_KEYS);
+			for(String t:e.entities.keySet())
+				{
+				int i=0;
+				for(Entry en:e.entities.get(t))
+					{
+					i=OrmUtils.appendValue(q, i, t, en, o);
+					}
+				}
+			QueryResult krs=q.executeInsert();
+			int i=0;
+			while (krs.next())
+				{
+				ColEntry colEntry=keys.get(i++);
+				OrmUtils.setValue(colEntry, o, krs.getInt(i));
+				}
+			krs.close();
+			q.close();
+			}
 		}
 	}
