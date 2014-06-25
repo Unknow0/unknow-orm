@@ -281,9 +281,9 @@ public class Database
 		return ret;
 		}
 
-	public void insert(Database db, Object o) throws SQLException
+	public void insert(Object o) throws SQLException
 		{
-		Entity<?> e=db.getMapping(o.getClass());
+		Entity<?> e=getMapping(o.getClass());
 		StringBuilder sql=new StringBuilder();
 
 		List<Entity.ColEntry> keys=new ArrayList<Entity.ColEntry>();
