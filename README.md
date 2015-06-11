@@ -39,14 +39,16 @@ Cfg format
 		}
 	}
 
-===== Table cfg
+Table cfg
+=====
 	{
 	"table": <table name>,
 	"columns": <columns cfg>
 	"fields": <fields cfg>
 	}
 
-====== Column cfg
+Column cfg
+======
 if database column name are the same as java.
 	[
 	<col name>,
@@ -69,8 +71,8 @@ also you can specify setter if you don't use `set<Jname>`
 		}
 	}
 
-===== Field cfg
-
+Field cfg
+=====
 	{
 	<field name>: <column name>
 	...

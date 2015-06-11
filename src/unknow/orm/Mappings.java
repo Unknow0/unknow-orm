@@ -28,7 +28,7 @@ public class Mappings
 
 	public static void load(String key, Cfg cfg) throws JsonException, SQLException, ClassNotFoundException, ClassCastException, InstantiationException, IllegalAccessException, NamingException
 		{
-		JsonObject o=cfg.getJsonObject(key);
+		JsonObject o=key==null||key.equals("")?cfg:cfg.getJsonObject(key);
 		for(String db:o)
 			{
 			loadMapping(db, o.getJsonObject(db));
