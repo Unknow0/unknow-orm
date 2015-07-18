@@ -20,7 +20,7 @@ import unknow.common.*;
 
 public class Entity<T>
 	{
-	private static final Logger logger=LogManager.getLogger(Entity.class);
+	private static final Logger logger=LogManager.getFormatterLogger(Entity.class);
 
 	private Class<T> clazz;
 
@@ -94,6 +94,7 @@ public class Entity<T>
 							Method m=Reflection.getMethod(clazz, e.setter, type);
 							if(m!=null)
 								{
+								logger.trace(" -> setting %s %s", e.javaName, value);
 								m.invoke(entity, value);
 								continue;
 								}
@@ -108,12 +109,12 @@ public class Entity<T>
 							}
 						try
 							{
-							Field field=clazz.getDeclaredField(e.javaName);
+							Field field=Reflection.getField(clazz, e.javaName);
+							if(field==null)
+								throw new SQLException("no accessible '"+e.setter+"("+type.getName()+")' or '"+e.javaName+"' in '"+clazz.getName()+"'");
+							field.setAccessible(true);
+							logger.trace(" -> setting %s %s", e.javaName, value);
 							field.set(entity, value);
-							}
-						catch (NoSuchFieldException ex)
-							{
-							throw new SQLException("no accessible '"+e.setter+"("+type.getName()+")' or '"+e.javaName+"' in '"+clazz.getName()+"'");
 							}
 						catch (SecurityException ex)
 							{
@@ -124,8 +125,8 @@ public class Entity<T>
 						{
 						throw new SQLException("can't execute '"+e.setter+"("+type.getName()+")' or set '"+e.javaName+"' in '"+clazz.getName()+"'", ex);
 						}
-					i++;
 					}
+				i++;
 				}
 			logger.trace("build '"+clazz+"' => '"+entity+"'");
 			return entity;
