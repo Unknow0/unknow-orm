@@ -13,10 +13,11 @@ Cfg format
 		"daos":
 			{
 			<full qualified class>:
-				[
-					<table cfg>
-					// or more table if this object use multiple tables
-				]
+				{
+				"table": <table name>,
+				"columns": <columns cfg>
+				"fields": <fields cfg>
+				}
 			},
 		"connection":
 			{
@@ -37,14 +38,6 @@ Cfg format
 			...
 			]
 		}
-	}
-
-Table cfg
-=====
-	{
-	"table": <table name>,
-	"columns": <columns cfg>
-	"fields": <fields cfg>
 	}
 
 Column cfg

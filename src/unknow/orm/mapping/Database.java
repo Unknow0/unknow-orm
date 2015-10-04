@@ -20,6 +20,7 @@ import org.apache.logging.log4j.*;
 import unknow.json.*;
 import unknow.json.JsonValue.JsonString;
 import unknow.orm.*;
+import unknow.orm.criteria.*;
 import unknow.orm.mapping.Entity.ColEntry;
 import unknow.orm.mapping.Entity.Entry;
 
@@ -64,6 +65,8 @@ public class Database
 					e=new Entity.ColEntry(col, obj.optString("jname"), obj.optString("setter"), obj.optBoolean("key"));
 					}
 				}
+
+			logger.info("> load col %s> %s", e, col);
 			if(e!=null)
 				entries.add(e);
 			}
@@ -79,6 +82,7 @@ public class Database
 				Column col=table.getColumn(((JsonString)fieldcfg).value());
 				if(col!=null)
 					entries.add(new Entity.ColEntry(col, jname, null));
+				logger.info("> load fields %s>%s", jname, col);
 				}
 			else if(fieldcfg instanceof JsonObject)
 				{
@@ -95,9 +99,7 @@ public class Database
 				if(fc!=null)
 					loadField(table, fc, set);
 
-				Map<String,Set<Entry>> map=new HashMap<String,Set<Entry>>();
-				map.put(table.getName(), set);
-				entries.add(new Entity.EntityEntry(new Entity<>(clazz, map), jname, null));
+				entries.add(new Entity.EntityEntry(new Entity<>(clazz, table.getName(), set), jname, null));
 				}
 			}
 		}
@@ -109,40 +111,34 @@ public class Database
 			try
 				{
 				Class<?> c=Class.forName(clazz);
-				JsonArray a=daosCfg.getJsonArray(clazz);
-				Map<String,Set<Entity.Entry>> cols=new HashMap<String,Set<Entity.Entry>>();
-				for(int i=0; i<a.length(); i++)
+				JsonValue v=daosCfg.get(clazz);
+				Set<Entity.Entry> entries=new HashSet<Entity.Entry>();
+				String table;
+				if(v instanceof JsonObject)
 					{
-					JsonValue v=a.get(i);
-					Set<Entity.Entry> entries=new HashSet<Entity.Entry>();
-					String table;
-					if(v instanceof JsonObject)
-						{
-						JsonObject o=(JsonObject)v;
-						table=o.getString("table");
-						JsonValue colcfg=o.opt("columns");
-						JsonObject fields=o.optJsonObject("fields");
-						logger.info("load dao for %s\n", table);
-						Table t=tables.get(table);
+					JsonObject o=(JsonObject)v;
+					table=o.getString("table");
+					JsonValue colcfg=o.opt("columns");
+					JsonObject fields=o.optJsonObject("fields");
+					logger.info("load dao for %s", table);
+					Table t=tables.get(table);
 
-						if(colcfg!=null)
-							loadCol(entries, t, colcfg);
-						if(fields!=null)
-							loadField(t, fields, entries);
-						}
-					else if(v instanceof JsonString)
-						{
-						table=((JsonString)v).value();
-						Table t=tables.get(table);
-						for(Column col:t.getColumns())
-							entries.add(new Entity.ColEntry(col, null, null));
-						}
-					else
-						throw new JsonException("Expected JsonObject or JsonString for '"+clazz+"' daos");
-
-					cols.put(table, entries);
+					if(colcfg!=null)
+						loadCol(entries, t, colcfg);
+					if(fields!=null)
+						loadField(t, fields, entries);
 					}
-				mapping.put(c, new Entity<>(c, cols));
+				else if(v instanceof JsonString)
+					{
+					table=((JsonString)v).value();
+					Table t=tables.get(table);
+					for(Column col:t.getColumns())
+						entries.add(new Entity.ColEntry(col, null, null));
+					}
+				else
+					throw new JsonException("Expected JsonObject or JsonString for '"+clazz+"' daos");
+
+				mapping.put(c, new Entity<>(c, table, entries));
 				}
 			catch (ClassNotFoundException e)
 				{
@@ -174,47 +170,33 @@ public class Database
 			}
 		}
 
-	public Object convert(int sqlType, String type, ResultSet rs, String name) throws SQLException
+	public <T> T convert(Class<T> expected, Column col, ResultSet rs, String alias) throws SQLException
 		{
+		String label=alias+"."+col.getName();
 		if(typesMapping!=null)
 			{
 			for(TypeConvertor typeConvert:typesMapping)
 				{
-				if(typeConvert.canConvert(sqlType, type))
-					return typeConvert.convert(sqlType, type, rs, name);
+				if(typeConvert.canConvert(expected, col))
+					return typeConvert.convert(expected, col, rs, label);
 				}
 			}
-		return OrmUtils.convert(sqlType, type, rs, name);
-		}
-
-	public Class<?> toJavaType(int sqlType, String type) throws SQLException
-		{
-		if(typesMapping!=null)
-			{
-			for(TypeConvertor typeConvert:typesMapping)
-				{
-				if(typeConvert.canConvert(sqlType, type))
-					return typeConvert.toJavaType(sqlType, type);
-				}
-			}
-		return OrmUtils.toJavaType(sqlType, type);
+		return OrmUtils.convert(expected, col, rs, label);
 		}
 
 	@SuppressWarnings("unchecked")
-	public <T> Entity<T> getMapping(Class<T> entity)
+	public <T> Entity<T> getMapping(Class<T> entity) throws SQLException
 		{
-		return (Entity<T>)mapping.get(entity);
+		Entity<?> e=mapping.get(entity);
+		if(e==null)
+			throw new SQLException("no mapping founf for class '"+entity.getName()+"'");
+
+		return (Entity<T>)e;
 		}
 
 	public void setTypesMapping(TypeConvertor[] types)
 		{
 		typesMapping=types;
-		}
-
-	public void addMapping(String cl, Entity<?> entity) throws ClassNotFoundException, ClassCastException
-		{
-		Class<?> clazz=Class.forName(cl);
-		mapping.put(clazz, entity);
 		}
 
 	public Connection getConnection() throws SQLException
@@ -232,52 +214,52 @@ public class Database
 		return new Query(this, query, alias, entities);
 		}
 
-	public Query createQuery(String query, Map<String,Class<?>> aliasMapping) throws SQLException
-		{
-		return new Query(this, query, aliasMapping);
-		}
-
 	public Query createInsert(String query) throws SQLException
 		{
 		return new Query(this, query, Statement.RETURN_GENERATED_KEYS);
 		}
 
+	public Criteria createCriteria(Class<?> entity) throws SQLException
+		{
+		return createCriteria(entity, "this");
+		}
+
+	public Criteria createCriteria(Class<?> entity, String alias) throws SQLException
+		{
+		return new Criteria(this, getMapping(entity), alias);
+		}
+
 	/**
-	 * @return number of row updated per table.
+	 * @return number of row updated.
 	 */
-	public int[] update(Database db, Object o) throws SQLException
+	public int update(Database db, Object o) throws SQLException
 		{
 		Entity<?> e=db.getMapping(o.getClass());
 		StringBuilder sql=new StringBuilder();
-		int[] ret=new int[e.entities.size()];
-		int r=0;
-		for(String table:e.entities.keySet())
-			{
-			sql.append("UPDATE  ");
-			sql.append(table);
-			sql.append(" SET ");
+		int ret;
 
-			boolean first=true;
-			for(Entry en:e.entities.get(table))
-				{
-				if(!first)
-					sql.append(',');
-				else
-					first=false;
-				OrmUtils.appendUpdate(sql, table, en);
-				}
-			Query q=new Query(this, sql.toString(), Statement.NO_GENERATED_KEYS);
-			for(String t:e.entities.keySet())
-				{
-				int i=0;
-				for(Entry en:e.entities.get(t))
-					{
-					i=OrmUtils.appendValue(q, i, t, en, o);
-					}
-				}
-			ret[r++]=q.executeUpdate();
-			q.close();
+		sql.append("UPDATE  ");
+		sql.append(e.table);
+		sql.append(" SET ");
+
+		boolean first=true;
+		for(Entry en:e.entries)
+			{
+			if(!first)
+				sql.append(',');
+			else
+				first=false;
+			OrmUtils.appendUpdate(sql, en);
 			}
+		Query q=new Query(this, sql.toString(), Statement.NO_GENERATED_KEYS);
+		int i=0;
+		for(Entry en:e.entries)
+			{
+			i=OrmUtils.appendValue(q, i, en, o);
+			}
+		ret=q.executeUpdate();
+		q.close();
+
 		return ret;
 		}
 
@@ -287,50 +269,44 @@ public class Database
 		StringBuilder sql=new StringBuilder();
 
 		List<Entity.ColEntry> keys=new ArrayList<Entity.ColEntry>();
-		for(String table:e.entities.keySet())
+		keys.clear();
+		sql.append("INSERT INTO  ");
+		sql.append(e.table);
+		sql.append('(');
+		boolean first=true;
+		for(Entry en:e.entries)
 			{
-			keys.clear();
-			sql.append("INSERT INTO  ");
-			sql.append(table);
-			sql.append('(');
-			boolean first=true;
-			for(Entry en:e.entities.get(table))
-				{
-				if(!first)
-					sql.append(',');
-				else
-					first=false;
-				OrmUtils.appendColName(keys, sql, table, en);
-				}
-			sql.append(") VALUES (");
-
-			first=true;
-			for(Entry en:e.entities.get(table))
-				{
-				if(!first)
-					sql.append(',');
-				else
-					first=false;
-				OrmUtils.appendInsertValues(sql, table, en);
-				}
-			Query q=new Query(this, sql.toString(), Statement.RETURN_GENERATED_KEYS);
-			for(String t:e.entities.keySet())
-				{
-				int i=0;
-				for(Entry en:e.entities.get(t))
-					{
-					i=OrmUtils.appendValue(q, i, t, en, o);
-					}
-				}
-			QueryResult krs=q.executeInsert();
-			int i=0;
-			while (krs.next())
-				{
-				ColEntry colEntry=keys.get(i++);
-				OrmUtils.setValue(colEntry, o, krs.getInt(i));
-				}
-			krs.close();
-			q.close();
+			if(!first)
+				sql.append(',');
+			else
+				first=false;
+			OrmUtils.appendColName(keys, sql, en);
 			}
+		sql.append(") VALUES (");
+
+		first=true;
+		for(Entry en:e.entries)
+			{
+			if(!first)
+				sql.append(',');
+			else
+				first=false;
+			OrmUtils.appendInsertValues(sql, en);
+			}
+		Query q=new Query(this, sql.toString(), Statement.RETURN_GENERATED_KEYS);
+		int i=0;
+		for(Entry en:e.entries)
+			{
+			i=OrmUtils.appendValue(q, i, en, o);
+			}
+		QueryResult krs=q.executeInsert();
+		i=0;
+		while (krs.next())
+			{
+			ColEntry colEntry=keys.get(i++);
+			OrmUtils.setValue(colEntry, o, krs.getInt(i));
+			}
+		krs.close();
+		q.close();
 		}
 	}

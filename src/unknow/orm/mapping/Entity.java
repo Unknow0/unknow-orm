@@ -24,109 +24,92 @@ public class Entity<T>
 
 	private Class<T> clazz;
 
-	public final Map<String,Set<Entry>> entities;
+	public final Set<Entry> entries;
+	public String table;
 
-	public Entity(Class<T> cl, Map<String,Set<Entry>> ent)
+	public Entity(Class<T> cl, String t, Set<Entry> ent)
 		{
 		clazz=cl;
-		entities=ent;
+		table=t;
+		entries=ent;
 		}
 
-	public void append(StringBuilder sql, String alias) throws SQLException
+	public void append(StringBuilder sql, String alias, Collection<String> restrictions)
 		{
-		String[] a=alias.split(",");
-		if(a.length!=entities.size())
-			throw new SQLException("aliases count differ from table count");
 		boolean first=true;
-		int i=0;
-		for(String table:entities.keySet())
+		for(Entry e:entries)
 			{
-			for(Entry e:entities.get(table))
+			if(restrictions!=null&&!restrictions.contains(e.javaName))
+				continue;
+			if(!first)
+				sql.append(',');
+			else
+				first=false;
+			if(e instanceof ColEntry)
 				{
-				if(!first)
-					sql.append(',');
-				else
-					first=false;
-				if(e instanceof ColEntry)
-					{
-					String col=((ColEntry)e).col.getName();
-					sql.append(a[i]).append('.').append(col);
-					sql.append(" as ");
-					sql.append('"').append(a[i]).append('.').append(col).append('"');
-					}
-				else
-					((EntityEntry)e).entity.append(sql, a[i]);
+				String col=((ColEntry)e).col.getName();
+				sql.append(alias).append('.').append(col);
+				sql.append(" as ");
+				sql.append('"').append(alias).append('.').append(col).append('"');
 				}
-			i++;
+			else
+				((EntityEntry)e).entity.append(sql, alias, restrictions);
 			}
 		}
 
 	public T build(Database database, String alias, ResultSet rs) throws SQLException
 		{
-		String[] a=alias.split(",");
-		if(a.length!=entities.size())
-			throw new SQLException("aliases count differs from table count");
 		try
 			{
 			T entity=clazz.newInstance();
-			int i=0;
-			for(String table:entities.keySet())
+			for(Entry e:entries)
 				{
-				for(Entry e:entities.get(table))
+				Field field=Reflection.getField(clazz, e.javaName);
+				Class<?> expected=field.getType();
+
+				Object value;
+				if(e instanceof ColEntry)
 					{
-					Class<?> type;
-					Object value;
-					if(e instanceof ColEntry)
+					ColEntry c=(ColEntry)e;
+					value=database.convert(expected, c.col, rs, alias);
+					}
+				else
+					value=((EntityEntry)e).entity.build(database, alias, rs);
+				try
+					{
+					try
 						{
-						ColEntry c=(ColEntry)e;
-						type=database.toJavaType(c.col.getSqlType(), c.col.getType());
-						value=database.convert(c.col.getSqlType(), c.col.getType(), rs, a[i]+"."+c.col.getName());
+						Method m=Reflection.getMethod(clazz, e.setter, expected);
+						if(m!=null)
+							{
+							logger.trace(" -> setting %s %s", e.javaName, value);
+							m.invoke(entity, value);
+							continue;
+							}
 						}
-					else
+					catch (IllegalArgumentException ex)
 						{
-						value=((EntityEntry)e).entity.build(database, a[i], rs);
-						type=value.getClass();
+						logger.warn("fail to call '"+e.setter+"' on '"+entity+"'", ex);
+						}
+					catch (InvocationTargetException ex)
+						{
+						logger.warn("fail to call '"+e.setter+"' on '"+entity+"'", ex);
 						}
 					try
 						{
-						try
-							{
-							Method m=Reflection.getMethod(clazz, e.setter, type);
-							if(m!=null)
-								{
-								logger.trace(" -> setting %s %s", e.javaName, value);
-								m.invoke(entity, value);
-								continue;
-								}
-							}
-						catch (IllegalArgumentException ex)
-							{
-							logger.warn("fail to call '"+e.setter+"' on '"+entity+"'", ex);
-							}
-						catch (InvocationTargetException ex)
-							{
-							logger.warn("fail to call '"+e.setter+"' on '"+entity+"'", ex);
-							}
-						try
-							{
-							Field field=Reflection.getField(clazz, e.javaName);
-							if(field==null)
-								throw new SQLException("no accessible '"+e.setter+"("+type.getName()+")' or '"+e.javaName+"' in '"+clazz.getName()+"'");
-							field.setAccessible(true);
-							logger.trace(" -> setting %s %s", e.javaName, value);
-							field.set(entity, value);
-							}
-						catch (SecurityException ex)
-							{
-							throw new SQLException("can't set '"+e.javaName+"' in '"+clazz.getName()+"'", ex);
-							}
+						field.setAccessible(true);
+						logger.trace(" -> setting %s %s", e.javaName, value);
+						field.set(entity, value);
 						}
-					catch (IllegalAccessException ex)
+					catch (SecurityException ex)
 						{
-						throw new SQLException("can't execute '"+e.setter+"("+type.getName()+")' or set '"+e.javaName+"' in '"+clazz.getName()+"'", ex);
+						throw new SQLException("can't set '"+e.javaName+"' in '"+clazz.getName()+"'", ex);
 						}
 					}
-				i++;
+				catch (IllegalAccessException ex)
+					{
+					throw new SQLException("can't execute '"+e.setter+"("+expected.getName()+")' or set '"+e.javaName+"' in '"+clazz.getName()+"'", ex);
+					}
 				}
 			logger.trace("build '"+clazz+"' => '"+entity+"'");
 			return entity;
@@ -141,6 +124,16 @@ public class Entity<T>
 			}
 		}
 
+	public Entry findCol(String property)
+		{
+		for(Entry e:entries)
+			{
+			if(e.javaName.equals(property))
+				return e;
+			}
+		return null;
+		}
+
 	public static class Entry
 		{
 		public String setter;
@@ -152,6 +145,11 @@ public class Entity<T>
 			this.javaName=javaName;
 			this.setter=setter!=null?setter:"set"+Character.toUpperCase(javaName.charAt(0))+javaName.substring(1);
 			this.getter="get"+Character.toUpperCase(javaName.charAt(0))+javaName.substring(1);
+			}
+
+		public String toString()
+			{
+			return javaName;
 			}
 		}
 

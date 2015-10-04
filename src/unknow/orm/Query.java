@@ -25,7 +25,7 @@ public class Query implements AutoCloseable
 	{
 	private static final Logger logger=LogManager.getLogger(Query.class);
 	private Map<String,Integer> paramPos=new HashMap<String,Integer>();
-	private Map<String,Class<?>> aliasMapping=new HashMap<String,Class<?>>();
+	private Map<String,Entity<?>> aliasMapping=new HashMap<String,Entity<?>>();
 
 	private Database db;
 	private Connection co=null;
@@ -35,25 +35,17 @@ public class Query implements AutoCloseable
 
 	public Query(Database db, CharSequence query, String[] alias, Class<?>[] entities) throws SQLException
 		{
-		this.db=db;
-		if(alias.length!=entities.length)
-			throw new SQLException("alias & entity size missmatch");
-		aliasMapping=new HashMap<String,Class<?>>();
-		for(int i=0; i<alias.length; i++)
-			aliasMapping.put(alias[i], entities[i]);
-		init(query, Statement.NO_GENERATED_KEYS);
+		this(db, query, alias, entities, Statement.NO_GENERATED_KEYS);
 		}
 
-	public Query(Database db, CharSequence query, Map<String,Class<?>> aliasMapping) throws SQLException
+	public Query(Database db, CharSequence query, Map<String,Entity<?>> aliasMapping) throws SQLException
 		{
-		this.db=db;
-		this.aliasMapping.putAll(aliasMapping);
-		init(query, Statement.NO_GENERATED_KEYS);
+		this(db, query, aliasMapping, Statement.NO_GENERATED_KEYS);
 		}
 
 	public Query(Database db, String query) throws SQLException
 		{
-		this(db, query, new HashMap<String,Class<?>>());
+		this(db, query, new HashMap<String,Entity<?>>(), Statement.NO_GENERATED_KEYS);
 		}
 
 	public Query(Database db, CharSequence query, String[] alias, Class<?>[] entities, int genKey) throws SQLException
@@ -61,13 +53,13 @@ public class Query implements AutoCloseable
 		this.db=db;
 		if(alias.length!=entities.length)
 			throw new SQLException("alias & entity size missmatch");
-		aliasMapping=new HashMap<String,Class<?>>();
+		aliasMapping=new HashMap<String,Entity<?>>();
 		for(int i=0; i<alias.length; i++)
-			aliasMapping.put(alias[i], entities[i]);
+			aliasMapping.put(alias[i], db.getMapping(entities[i]));
 		init(query, genKey);
 		}
 
-	public Query(Database db, CharSequence query, Map<String,Class<?>> aliasMapping, int genKey) throws SQLException
+	public Query(Database db, CharSequence query, Map<String,Entity<?>> aliasMapping, int genKey) throws SQLException
 		{
 		this.db=db;
 		this.aliasMapping.putAll(aliasMapping);
@@ -76,7 +68,7 @@ public class Query implements AutoCloseable
 
 	public Query(Database db, String query, int genKey) throws SQLException
 		{
-		this(db, query, new HashMap<String,Class<?>>());
+		this(db, query, new HashMap<String,Entity<?>>(), genKey);
 		}
 
 	private void init(CharSequence query, int genKey) throws SQLException
@@ -101,11 +93,8 @@ public class Query implements AutoCloseable
 					String alias=tmp.toString();
 					if(aliasMapping==null||!aliasMapping.containsKey(alias))
 						throw new SQLException("alias '"+alias+"' not in alias mapping");
-					Class<?> clazz=aliasMapping.get(alias);
-					Entity<?> e=db.getMapping(clazz);
-					if(e==null)
-						throw new SQLException("no mapping found for '"+clazz+"'");
-					e.append(sb, alias);
+					Entity<?> e=aliasMapping.get(alias);
+					e.append(sb, alias, null);
 					tmp.setLength(0);
 					i++;
 					break;
@@ -794,7 +783,7 @@ public class Query implements AutoCloseable
 
 	private static class Result extends QueryResult
 		{
-		public Result(Database db, ResultSet rs, Map<String,Class<?>> mapping)
+		public Result(Database db, ResultSet rs, Map<String,Entity<?>> mapping)
 			{
 			super(db, rs, mapping);
 			}

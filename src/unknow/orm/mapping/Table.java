@@ -43,10 +43,11 @@ public class Table
 				Integer sqlType=rs.getInt("DATA_TYPE");
 				String type=rs.getString("TYPE_NAME");
 				String colRemark=rs.getString("REMARKS");
+				int lenth=rs.getInt("COLUMN_SIZE");
 
 				logger.trace("%s> %s", name, colName);
 				
-				Column col=new Column(colName, sqlType, type, colRemark);
+				Column col=new Column(colName, sqlType, type, lenth, colRemark);
 				list.add(col);
 				}
 			}

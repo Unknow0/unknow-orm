@@ -6,7 +6,7 @@
  * http://www.gnu.org/licenses/lgpl-3.0.html
  * 
  * Contributors:
- *     Unknow - initial API and implementation
+ * Unknow - initial API and implementation
  ******************************************************************************/
 package unknow.orm.mapping;
 
@@ -14,9 +14,7 @@ import java.sql.*;
 
 public interface TypeConvertor
 	{
-	public boolean canConvert(int sqlType, String type);
-	
-	public Object convert(int sqlType, String type, ResultSet rs, String name) throws SQLException;
-	
-	public Class<?> toJavaType(int sqlType, String type) throws SQLException;
+	public boolean canConvert(Class<?> expected, Column sqlColumn);
+
+	public <T> T convert(Class<T> expected, Column sqlColumn, ResultSet rs, String label) throws SQLException;
 	}

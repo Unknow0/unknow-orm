@@ -22,14 +22,14 @@ import unknow.orm.mapping.*;
 public abstract class QueryResult implements ResultSet
 	{
 	protected ResultSet rs;
-	protected Map<String,Class<?>> mapping;
+	protected Map<String,Entity<?>> mapping;
 	protected Database db;
 
-	protected QueryResult()
-		{
-		}
+//	protected QueryResult()
+//		{
+//		}
 
-	protected QueryResult(Database db, ResultSet rs, Map<String,Class<?>> mapping)
+	protected QueryResult(Database db, ResultSet rs, Map<String,Entity<?>> mapping)
 		{
 		this.db=db;
 		this.rs=rs;
@@ -356,12 +356,10 @@ public abstract class QueryResult implements ResultSet
 		rs.close();
 		}
 
-	public Object getEntity(String alias) throws SQLException
+	@SuppressWarnings("unchecked")
+	public <T> T getEntity(String alias) throws SQLException
 		{
-		Class<?> clazz=mapping.get(alias);
-		if(clazz==null)
-			throw new SQLException("Alias '"+alias+"' not mapped");
-		Entity<?> e=db.getMapping(clazz);
+		Entity<T> e=(Entity<T>)mapping.get(alias);
 		return e.build(db, alias, rs);
 		}
 
