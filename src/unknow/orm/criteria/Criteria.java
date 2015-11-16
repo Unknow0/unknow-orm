@@ -11,6 +11,7 @@ import unknow.orm.mapping.*;
 public class Criteria
 	{
 	private static final Logger log=LogManager.getFormatterLogger(Criteria.class);
+
 	private Database db;
 	protected Entity<?> entity;
 	protected String alias;

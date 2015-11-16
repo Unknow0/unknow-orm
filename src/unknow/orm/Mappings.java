@@ -47,8 +47,8 @@ public class Mappings
 		if(type.equals("jdbc"))
 			{
 			String url=o.getString("url");
-			String user=o.optString("user");
-			String pass=o.optString("pass");
+			String user=o.getString("user");
+			String pass=o.getString("pass");
 			Integer idle=o.optInt("max_idle");
 			if(idle==null)
 				ds=new SimpleDataSource(url, user, pass);

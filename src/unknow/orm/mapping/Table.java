@@ -46,7 +46,6 @@ public class Table
 				int lenth=rs.getInt("COLUMN_SIZE");
 
 				logger.trace("%s> %s", name, colName);
-
 				Column col=new Column(colName, sqlType, type, lenth, colRemark);
 				list.add(col);
 				}
