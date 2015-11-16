@@ -77,6 +77,6 @@ public class Table
 
 	public String toString()
 		{
-		return schema+"."+catalog+"."+name+(remark!=null?" "+remark:"");
+		return (schema==null?"":schema+".")+(catalog==null?"":catalog+".")+name+(remark!=null?" "+remark:"");
 		}
 	}

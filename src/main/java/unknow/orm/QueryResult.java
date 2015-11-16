@@ -38,6 +38,8 @@ public abstract class QueryResult implements ResultSet
 
 	public boolean next() throws SQLException
 		{
+		if(rs==null)
+			return false;
 		return rs.next();
 		}
 
@@ -353,7 +355,8 @@ public abstract class QueryResult implements ResultSet
 
 	public void close() throws SQLException
 		{
-		rs.close();
+		if(rs!=null)
+			rs.close();
 		}
 
 	@SuppressWarnings("unchecked")
@@ -365,17 +368,21 @@ public abstract class QueryResult implements ResultSet
 
 	public boolean absolute(int row) throws SQLException
 		{
+		if(rs==null)
+			return false;
 		return rs.absolute(row);
 		}
 
 	public void afterLast() throws SQLException
 		{
-		rs.afterLast();
+		if(rs!=null)
+			rs.afterLast();
 		}
 
 	public void beforeFirst() throws SQLException
 		{
-		rs.beforeFirst();
+		if(rs!=null)
+			rs.beforeFirst();
 		}
 
 	public void cancelRowUpdates() throws SQLException
@@ -400,6 +407,8 @@ public abstract class QueryResult implements ResultSet
 
 	public boolean first() throws SQLException
 		{
+		if(rs==null)
+			return false;
 		return rs.first();
 		}
 

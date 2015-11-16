@@ -23,7 +23,7 @@ import unknow.orm.mapping.*;
 
 public class Query implements AutoCloseable
 	{
-	private static final Logger logger=LogManager.getLogger(Query.class);
+	private static final Logger log=LogManager.getLogger(Query.class);
 	private Map<String,Integer> paramPos=new HashMap<String,Integer>();
 	private Map<String,Entity<?>> aliasMapping=new HashMap<String,Entity<?>>();
 
@@ -118,14 +118,16 @@ public class Query implements AutoCloseable
 				}
 			}
 		co=db.getConnection();
-		st=co.prepareStatement(sb.toString());
+
+		String sql=sb.toString();
+		log.trace(sql);
+		st=co.prepareStatement(sql);
 		}
 
 	public QueryResult execute() throws SQLException
 		{
 		if(result!=null)
 			result.close();
-		logger.trace(st.toString());
 		result=new Result(db, st.executeQuery(), aliasMapping);
 		return result;
 		}

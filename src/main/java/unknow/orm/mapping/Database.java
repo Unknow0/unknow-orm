@@ -245,14 +245,14 @@ public class Database
 	/**
 	 * @return number of row updated.
 	 */
-	public int update(Database db, Object o) throws SQLException
+	public int update(Object o) throws SQLException
 		{
-		Entity<?> e=db.getMapping(o.getClass());
+		Entity<?> e=getMapping(o.getClass());
 		StringBuilder sql=new StringBuilder();
 		int ret;
 
 		sql.append("UPDATE  ");
-		sql.append(e.table);
+		sql.append(e.table.getName());
 		sql.append(" SET ");
 
 		boolean first=true;
@@ -265,7 +265,7 @@ public class Database
 			OrmUtils.appendUpdate(sql, en);
 			}
 		Query q=new Query(this, sql.toString(), Statement.NO_GENERATED_KEYS);
-		int i=0;
+		int i=1;
 		for(Entry en:e.entries)
 			{
 			i=OrmUtils.appendValue(q, i, en, o);
@@ -284,8 +284,8 @@ public class Database
 		List<Entity.ColEntry> keys=new ArrayList<Entity.ColEntry>();
 		keys.clear();
 		sql.append("INSERT INTO  ");
-		sql.append(e.table);
-		sql.append('(');
+		sql.append(e.table.getName());
+		sql.append(" (");
 		boolean first=true;
 		for(Entry en:e.entries)
 			{
@@ -306,8 +306,9 @@ public class Database
 				first=false;
 			OrmUtils.appendInsertValues(sql, en);
 			}
+		sql.append(')');
 		Query q=new Query(this, sql.toString(), Statement.RETURN_GENERATED_KEYS);
-		int i=0;
+		int i=1;
 		for(Entry en:e.entries)
 			{
 			i=OrmUtils.appendValue(q, i, en, o);

@@ -24,7 +24,7 @@ public class Join extends Criteria
 	public void append(StringBuilder sb)
 		{
 		sb.append(" join ");
-		sb.append(entity.table).append(' ').append(alias);
+		sb.append(entity.table.getName()).append(' ').append(alias);
 
 		if(!on.isEmpty())
 			{
