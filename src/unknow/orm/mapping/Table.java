@@ -46,7 +46,7 @@ public class Table
 				int lenth=rs.getInt("COLUMN_SIZE");
 
 				logger.trace("%s> %s", name, colName);
-				
+
 				Column col=new Column(colName, sqlType, type, lenth, colRemark);
 				list.add(col);
 				}
@@ -59,12 +59,13 @@ public class Table
 		return columns;
 		}
 
-	/** @return The column with name name or null if not found */
-	public Column getColumn(String name)
+	/** @param caseSensitive 
+	 * @return The column with name name or null if not found */
+	public Column getColumn(String name, boolean caseSensitive)
 		{
 		for(int i=0; i<columns.length; i++)
 			{
-			if(columns[i].getName().equals(name))
+			if(caseSensitive&&columns[i].getName().equals(name)||!caseSensitive&&columns[i].getName().equalsIgnoreCase(name))
 				return columns[i];
 			}
 		return null;

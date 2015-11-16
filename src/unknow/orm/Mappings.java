@@ -37,15 +37,18 @@ public class Mappings
 
 	public static void loadMapping(String dbName, JsonObject dbCfg) throws JsonException, SQLException, ClassNotFoundException, ClassCastException, InstantiationException, IllegalAccessException, NamingException
 		{
+		if(!dbCfg.has("connection"))
+			return;
 		JsonObject daos=dbCfg.getJsonObject("daos");
 		JsonObject o=dbCfg.getJsonObject("connection");
+		Boolean caseSensitive=dbCfg.optBoolean("case_sensitive", false);
 		String type=o.getString("type");
 		DataSource ds=null;
 		if(type.equals("jdbc"))
 			{
 			String url=o.getString("url");
-			String user=o.getString("user");
-			String pass=o.getString("pass");
+			String user=o.optString("user");
+			String pass=o.optString("pass");
 			Integer idle=o.optInt("max_idle");
 			if(idle==null)
 				ds=new SimpleDataSource(url, user, pass);
@@ -59,7 +62,7 @@ public class Mappings
 		else
 			throw new JsonException("unknown connection type '"+type+"'.");
 
-		Database database=new Database(ds, daos);
+		Database database=new Database(ds, daos, caseSensitive);
 		mapping.put(dbName, database);
 
 		JsonArray a=dbCfg.optJsonArray("types");

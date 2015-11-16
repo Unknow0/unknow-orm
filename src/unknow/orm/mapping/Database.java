@@ -37,39 +37,45 @@ public class Database
 	private DataSource ds;
 
 	private Map<String,Table> tables=new HashMap<String,Table>();
+	private boolean caseSensitive;
 
 	/**
 	 * @param ds datasource to use.
 	 * @param cfg sould contains tables description.
 	 */
-	public Database(DataSource ds, JsonObject cfg) throws SQLException, JsonException, ClassNotFoundException, ClassCastException
+	public Database(DataSource ds, JsonObject cfg, boolean caseSensitive) throws SQLException, JsonException, ClassNotFoundException, ClassCastException
 		{
 		this.ds=ds;
+		this.caseSensitive=caseSensitive;
 		loadTablesDesc();
 		loadDaos(cfg);
 		}
 
-	private void loadCol(Set<Entry> entries, Table table, JsonValue colcfg)
+	private void loadCol(Set<Entry> entries, Table table, JsonValue colcfg) throws JsonException
 		{
-		for(Column col:table.getColumns())
+		Entity.ColEntry e=null;
+		if(colcfg instanceof JsonObject)
 			{
-			Entity.ColEntry e=null;
-			if(colcfg instanceof JsonObject)
+			for(String colName:(JsonObject)colcfg)
 				{
-				JsonValue opt=((JsonObject)colcfg).opt(col.getName());
+				JsonValue opt=((JsonObject)colcfg).get(colName);
+				Column col=table.getColumn(colName, caseSensitive);
 				if(opt instanceof JsonString)
+					{
 					e=new Entity.ColEntry(col, ((JsonString)opt).value(), null);
+					}
 				else if(opt instanceof JsonObject)
 					{
 					JsonObject obj=(JsonObject)opt;
 					e=new Entity.ColEntry(col, obj.optString("jname"), obj.optString("setter"), obj.optBoolean("key"));
 					}
-				}
 
-			logger.info("> load col %s> %s", e, col);
-			if(e!=null)
-				entries.add(e);
+				logger.info("> load col %s> %s", e, col);
+				if(e!=null)
+					entries.add(e);
+				}
 			}
+
 		}
 
 	public void loadField(Table table, JsonObject fields, Set<Entity.Entry> entries) throws JsonException, ClassNotFoundException
@@ -79,7 +85,8 @@ public class Database
 			JsonValue fieldcfg=fields.get(jname);
 			if(fieldcfg instanceof JsonString)
 				{
-				Column col=table.getColumn(((JsonString)fieldcfg).value());
+				String value=((JsonString)fieldcfg).value();
+				Column col=table.getColumn(value, caseSensitive);
 				if(col!=null)
 					entries.add(new Entity.ColEntry(col, jname, null));
 				logger.info("> load fields %s>%s", jname, col);
@@ -99,7 +106,7 @@ public class Database
 				if(fc!=null)
 					loadField(table, fc, set);
 
-				entries.add(new Entity.EntityEntry(new Entity<>(clazz, table.getName(), set), jname, null));
+				entries.add(new Entity.EntityEntry(new Entity<>(clazz, table, set), jname, null));
 				}
 			}
 		}
@@ -113,26 +120,30 @@ public class Database
 				Class<?> c=Class.forName(clazz);
 				JsonValue v=daosCfg.get(clazz);
 				Set<Entity.Entry> entries=new HashSet<Entity.Entry>();
-				String table;
+				Table table;
 				if(v instanceof JsonObject)
 					{
 					JsonObject o=(JsonObject)v;
-					table=o.getString("table");
+					String t=o.getString("table");
 					JsonValue colcfg=o.opt("columns");
 					JsonObject fields=o.optJsonObject("fields");
-					logger.info("load dao for %s", table);
-					Table t=tables.get(table);
+					logger.info("load dao for %s", t);
+					if(!caseSensitive)
+						t=t.toLowerCase();
+					table=tables.get(t);
 
 					if(colcfg!=null)
-						loadCol(entries, t, colcfg);
+						loadCol(entries, table, colcfg);
 					if(fields!=null)
-						loadField(t, fields, entries);
+						loadField(table, fields, entries);
 					}
 				else if(v instanceof JsonString)
 					{
-					table=((JsonString)v).value();
-					Table t=tables.get(table);
-					for(Column col:t.getColumns())
+					String t=((JsonString)v).value();
+					if(!caseSensitive)
+						t=t.toLowerCase();
+					table=tables.get(t);
+					for(Column col:table.getColumns())
 						entries.add(new Entity.ColEntry(col, null, null));
 					}
 				else
@@ -161,10 +172,12 @@ public class Database
 					String name=rs.getString("TABLE_NAME");
 //					String type=rs.getString("TABLE_TYPE");
 					String remark=rs.getString("REMARKS");
-
 					logger.trace("Found table '%s'", name);
 					Table table=new Table(metaData, name, schema, catalog, remark);
-					tables.put(table.getName(), table);
+
+					if(!caseSensitive)
+						name=name.toLowerCase();
+					tables.put(name, table);
 					}
 				}
 			}

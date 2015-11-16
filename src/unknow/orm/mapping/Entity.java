@@ -25,9 +25,9 @@ public class Entity<T>
 	private Class<T> clazz;
 
 	public final Set<Entry> entries;
-	public String table;
+	public Table table;
 
-	public Entity(Class<T> cl, String t, Set<Entry> ent)
+	public Entity(Class<T> cl, Table t, Set<Entry> ent)
 		{
 		clazz=cl;
 		table=t;

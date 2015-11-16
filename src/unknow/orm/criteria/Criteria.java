@@ -3,11 +3,14 @@ package unknow.orm.criteria;
 import java.sql.*;
 import java.util.*;
 
+import org.apache.logging.log4j.*;
+
 import unknow.orm.*;
 import unknow.orm.mapping.*;
 
 public class Criteria
 	{
+	private static final Logger log=LogManager.getFormatterLogger(Criteria.class);
 	private Database db;
 	protected Entity<?> entity;
 	protected String alias;
@@ -73,7 +76,7 @@ public class Criteria
 		StringBuilder sb=new StringBuilder("select ");
 		appendSelect(sb);
 
-		sb.append(" from ").append(entity.table).append(" ").append(alias);
+		sb.append(" from ").append(entity.table.getName()).append(" ").append(alias);
 		for(Join j:join)
 			{
 			j.append(sb);
@@ -125,7 +128,9 @@ public class Criteria
 		populateAlias(map);
 
 		Connection co=db.getConnection();
-		PreparedStatement st=co.prepareStatement(getSql());
+		String sql=getSql();
+		log.debug(sql);
+		PreparedStatement st=co.prepareStatement(sql);
 
 		for(Restriction r:where)
 			r.setValue(st);

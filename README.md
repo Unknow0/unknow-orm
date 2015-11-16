@@ -36,7 +36,8 @@ Cfg format
 			[
 			<full qualified class>	// add a TypeConvertor, they will be checked in this order
 			...
-			]
+			],
+		"case_sensitive": TRUE/FALSE // if table/column should be check with the case or not
 		}
 	}
 
