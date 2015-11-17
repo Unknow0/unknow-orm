@@ -56,7 +56,7 @@ public class Criteria
 				first=false;
 			else
 				sb.append(" and ");
-			param=r.append(sb, alias, param);
+			param=r.append(sb, alias, entity, param);
 			}
 		for(Join j:join)
 			{
@@ -80,7 +80,7 @@ public class Criteria
 		sb.append(" from ").append(entity.table.getName()).append(" ").append(alias);
 		for(Join j:join)
 			{
-			j.append(sb);
+			j.append(sb, alias);
 			}
 
 		if(hasWhere())
@@ -130,7 +130,7 @@ public class Criteria
 
 		Connection co=db.getConnection();
 		String sql=getSql();
-		log.debug(sql);
+		log.trace(sql);
 		PreparedStatement st=co.prepareStatement(sql);
 
 		for(Restriction r:where)

@@ -6,7 +6,7 @@ import unknow.orm.mapping.*;
 
 public abstract class Projection
 	{
-	public abstract Collection<String> properties(Entity<?> e);
+	abstract Collection<String> properties(Entity<?> e);
 
 	public static Projection property(String... p)
 		{

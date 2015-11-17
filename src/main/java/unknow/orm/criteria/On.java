@@ -2,7 +2,7 @@ package unknow.orm.criteria;
 
 public abstract class On
 	{
-	public abstract void append(StringBuilder sb);
+	abstract void append(StringBuilder sb, String aliasLeft, String aliasRight);
 
 	public static On eq(String propLeft, String propRight)
 		{
@@ -57,11 +57,11 @@ public abstract class On
 			propRight=right;
 			}
 
-		public void append(StringBuilder sb)
+		void append(StringBuilder sb, String aliasLeft, String aliasRight)
 			{
-			sb.append(propLeft);
+			sb.append(aliasLeft).append('.').append(propLeft);
 			sb.append(operation);
-			sb.append(propRight);
+			sb.append(aliasRight).append('.').append(propRight);
 			}
 		}
 
@@ -77,14 +77,14 @@ public abstract class On
 			right=r;
 			}
 
-		public void append(StringBuilder sb)
+		void append(StringBuilder sb, String aliasLeft, String aliasRight)
 			{
 			sb.append('(');
-			left.append(sb);
+			left.append(sb, aliasLeft, aliasRight);
 			sb.append(") ");
 			sb.append(op);
 			sb.append(" (");
-			right.append(sb);
+			right.append(sb, aliasLeft, aliasRight);
 			sb.append(')');
 			}
 		}

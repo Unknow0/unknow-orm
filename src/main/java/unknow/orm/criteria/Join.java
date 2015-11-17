@@ -21,7 +21,7 @@ public class Join extends Criteria
 		super.appendSelect(sb);
 		}
 
-	public void append(StringBuilder sb)
+	void append(StringBuilder sb, String parentAlias)
 		{
 		sb.append(" join ");
 		sb.append(entity.table.getName()).append(' ').append(alias);
@@ -36,7 +36,7 @@ public class Join extends Criteria
 					first=false;
 				else
 					sb.append(" and ");
-				o.append(sb);
+				o.append(sb, parentAlias, alias);
 				}
 			}
 		}

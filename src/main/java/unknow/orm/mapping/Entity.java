@@ -124,12 +124,16 @@ public class Entity<T>
 			}
 		}
 
-	public Entry findCol(String property)
+	public ColEntry findCol(String property) throws SQLException
 		{
 		for(Entry e:entries)
 			{
 			if(e.javaName.equals(property))
-				return e;
+				{
+				if(e instanceof ColEntry)
+					return (ColEntry)e;
+				throw new SQLException("composite not supported"); // TODO
+				}
 			}
 		return null;
 		}

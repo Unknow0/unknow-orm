@@ -232,6 +232,7 @@ public class Database
 				sql.append(',');
 			coma=OrmUtils.appendUpdate(sql, en, false);
 			}
+		removeEnding(sql, ',');
 		sql.append(" WHERE ");
 		coma=false;
 		for(Entry en:e.entries)
@@ -240,6 +241,7 @@ public class Database
 				sql.append(',');
 			coma=OrmUtils.appendUpdate(sql, en, true);
 			}
+		removeEnding(sql, ',');
 		Query q=new Query(this, sql.toString(), Statement.NO_GENERATED_KEYS);
 		int i=1;
 		for(Entry en:e.entries)
@@ -254,6 +256,12 @@ public class Database
 		q.close();
 
 		return ret;
+		}
+
+	private static final void removeEnding(StringBuilder sb, char c)
+		{
+		if(sb.charAt(sb.length()-1)==c)
+			sb.setLength(sb.length()-1);
 		}
 
 	public void insert(Object o) throws SQLException
@@ -273,6 +281,7 @@ public class Database
 				sql.append(',');
 			coma=OrmUtils.appendColName(keys, sql, en, o);
 			}
+		removeEnding(sql, ',');
 		sql.append(") VALUES (");
 
 		coma=false;
@@ -282,6 +291,7 @@ public class Database
 				sql.append(',');
 			coma=OrmUtils.appendInsertValues(sql, en, o);
 			}
+		removeEnding(sql, ',');
 		sql.append(')');
 		Query q=new Query(this, sql.toString(), Statement.RETURN_GENERATED_KEYS);
 		int i=1;

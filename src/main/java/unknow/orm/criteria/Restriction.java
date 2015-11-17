@@ -2,11 +2,13 @@ package unknow.orm.criteria;
 
 import java.sql.*;
 
+import unknow.orm.mapping.*;
+
 public abstract class Restriction
 	{
-	public abstract int append(StringBuilder sb, String alias, int curParam) throws SQLException;
+	abstract int append(StringBuilder sb, String alias, Entity<?> e, int curParam) throws SQLException;
 
-	public abstract void setValue(PreparedStatement st) throws SQLException;
+	abstract void setValue(PreparedStatement st) throws SQLException;
 
 	public static Restriction eq(String property, Object value)
 		{
@@ -77,12 +79,10 @@ public abstract class Restriction
 			value=v;
 			}
 
-		public int append(StringBuilder sb, String alias/*, Entity<?> e*/, int curParam) throws SQLException
+		int append(StringBuilder sb, String alias, Entity<?> e, int curParam) throws SQLException
 			{
-			/*Entity.Entry ent=e.findCol(property);
-			if(!(ent instanceof Entity.ColEntry)) TODO
-				throw new SQLException("composite entry not supported");*/
-			sb.append(alias).append('.').append(property);
+			Entity.ColEntry col=e.findCol(property);
+			sb.append(alias).append('.').append(col.col.getName());
 			sb.append(operation);
 			if(value!=null)
 				{
@@ -92,7 +92,7 @@ public abstract class Restriction
 			return curParam;
 			}
 
-		public void setValue(PreparedStatement st) throws SQLException
+		void setValue(PreparedStatement st) throws SQLException
 			{
 			// TODO type conversion?
 			st.setObject(param, value);
@@ -110,9 +110,10 @@ public abstract class Restriction
 			this.is=is;
 			}
 
-		public int append(StringBuilder sb, String alias, int curParam)
+		int append(StringBuilder sb, String alias, Entity<?> e, int curParam) throws SQLException
 			{
-			sb.append(alias).append('.').append(property);
+			Entity.ColEntry col=e.findCol(property);
+			sb.append(alias).append('.').append(col.col.getName());
 			sb.append("is");
 			if(!is)
 				sb.append(" not");
@@ -120,7 +121,7 @@ public abstract class Restriction
 			return curParam;
 			}
 
-		public void setValue(PreparedStatement st) throws SQLException
+		void setValue(PreparedStatement st) throws SQLException
 			{
 			}
 		}
@@ -134,13 +135,13 @@ public abstract class Restriction
 			this.sql=sql;
 			}
 
-		public int append(StringBuilder sb, String alias, int curParam)
+		int append(StringBuilder sb, String alias, Entity<?> e, int curParam)
 			{
 			sb.append(sql);
 			return curParam;
 			}
 
-		public void setValue(PreparedStatement st) throws SQLException
+		void setValue(PreparedStatement st) throws SQLException
 			{
 			}
 		}
@@ -157,19 +158,19 @@ public abstract class Restriction
 			right=r;
 			}
 
-		public int append(StringBuilder sb, String alias, int curParam) throws SQLException
+		int append(StringBuilder sb, String alias, Entity<?> e, int curParam) throws SQLException
 			{
 			sb.append('(');
-			curParam=left.append(sb, alias, curParam);
+			curParam=left.append(sb, alias, e, curParam);
 			sb.append(") ");
 			sb.append(op);
 			sb.append(" (");
-			curParam=right.append(sb, alias, curParam);
+			curParam=right.append(sb, alias, e, curParam);
 			sb.append(')');
 			return curParam;
 			}
 
-		public void setValue(PreparedStatement st) throws SQLException
+		void setValue(PreparedStatement st) throws SQLException
 			{
 			right.setValue(st);
 			left.setValue(st);
