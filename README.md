@@ -16,6 +16,7 @@ Cfg format
 				{
 				"table": <table name>,
 				"columns": <columns cfg>
+				and/or
 				"fields": <fields cfg>
 				}
 			},
@@ -32,52 +33,46 @@ Cfg format
 			"type": "jndi",
 			"url": <jndi url>
 			},
-		"types":
+		"types": // optional
 			[
 			<full qualified class>	// add a TypeConvertor, they will be checked in this order
 			...
 			],
-		"case_sensitive": TRUE/FALSE // if table/column should be check with the case or not
+		"case_sensitive": TRUE/FALSE // optional if table/column should be check with the case or not
 		}
 	}
 
 Column cfg
 ======
-if database column name are the same as java.
-	[
-	<col name>,
-	<col name>
-	...
-	]
-	
-if they aren't
+for simple column mapping:
+
 	{
 	<col name>: <java name>,
 	...
 	}
 
 also you can specify setter if you don't use `set<Jname>`
+
 	{
 	<col name>:
 		{
 		"jname": <java name>,
-		"setter": <setter function>
+		"setter": <setter function>,	// optional
+		"key": TRUE/FALSE,	// optional set this column as a key
+		"ai": TRUE/FALSE		// optional set this colmn as autoincrement
 		}
 	}
 
 Field cfg
 =====
-	{
-	<field name>: <column name>
-	...
-	}
-
 if your field is another Dao/Pojo:
+
 	{
 	<field name>:
 		{
 		"class": <full calified class>
 		"columns": <columns cfg>
+		and/or
 		"fields": <fields cfg>
 		}
 	}

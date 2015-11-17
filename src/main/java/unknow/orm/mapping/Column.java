@@ -17,14 +17,16 @@ public class Column
 	private String type;
 	private String remark;
 	private int length;
+	private boolean ai;
 
-	public Column(String colName, int sqlType, String type, int length, String remark)
+	public Column(String colName, int sqlType, String type, int length, String remark, String ai)
 		{
 		this.name=colName;
 		this.sqlType=sqlType;
 		this.type=type;
 		this.remark=remark;
 		this.length=length;
+		this.ai="YES".equals(ai);
 		}
 
 	public String getName()
@@ -45,6 +47,11 @@ public class Column
 	public int getLength()
 		{
 		return length;
+		}
+
+	public boolean isAutoIncrement()
+		{
+		return ai;
 		}
 
 	public String toString()

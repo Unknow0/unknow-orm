@@ -44,9 +44,10 @@ public class Table
 				String type=rs.getString("TYPE_NAME");
 				String colRemark=rs.getString("REMARKS");
 				int lenth=rs.getInt("COLUMN_SIZE");
+				String ai=rs.getString("IS_AUTOINCREMENT");
 
 				logger.trace("%s> %s", name, colName);
-				Column col=new Column(colName, sqlType, type, lenth, colRemark);
+				Column col=new Column(colName, sqlType, type, lenth, colRemark, ai);
 				list.add(col);
 				}
 			}

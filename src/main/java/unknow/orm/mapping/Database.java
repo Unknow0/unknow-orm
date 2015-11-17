@@ -51,63 +51,47 @@ public class Database
 		loadDaos(cfg);
 		}
 
-	private void loadCol(Set<Entry> entries, Table table, JsonValue colcfg) throws JsonException
+	private void loadCol(Set<Entry> entries, Table table, JsonObject colcfg) throws JsonException
 		{
 		Entity.ColEntry e=null;
-		if(colcfg instanceof JsonObject)
+		for(String colName:colcfg)
 			{
-			for(String colName:(JsonObject)colcfg)
+			JsonValue opt=colcfg.get(colName);
+			Column col=table.getColumn(colName, caseSensitive);
+			if(opt instanceof JsonString)
 				{
-				JsonValue opt=((JsonObject)colcfg).get(colName);
-				Column col=table.getColumn(colName, caseSensitive);
-				if(opt instanceof JsonString)
-					{
-					e=new Entity.ColEntry(col, ((JsonString)opt).value(), null);
-					}
-				else if(opt instanceof JsonObject)
-					{
-					JsonObject obj=(JsonObject)opt;
-					e=new Entity.ColEntry(col, obj.optString("jname"), obj.optString("setter"), obj.optBoolean("key"));
-					}
-
-				logger.info("> load col %s> %s", e, col);
-				if(e!=null)
-					entries.add(e);
+				e=new Entity.ColEntry(col, ((JsonString)opt).value(), col.isAutoIncrement(), false);
 				}
-			}
+			else if(opt instanceof JsonObject)
+				{
+				JsonObject obj=(JsonObject)opt;
+				e=new Entity.ColEntry(col, obj.optString("jname"), obj.optString("setter"), obj.optBoolean("key", false), obj.optBoolean("ai", col.isAutoIncrement()));
+				}
 
+			logger.info("> load col %s> %s", e, col);
+			if(e!=null)
+				entries.add(e);
+			}
 		}
 
 	public void loadField(Table table, JsonObject fields, Set<Entity.Entry> entries) throws JsonException, ClassNotFoundException
 		{
 		for(String jname:fields)
 			{
-			JsonValue fieldcfg=fields.get(jname);
-			if(fieldcfg instanceof JsonString)
-				{
-				String value=((JsonString)fieldcfg).value();
-				Column col=table.getColumn(value, caseSensitive);
-				if(col!=null)
-					entries.add(new Entity.ColEntry(col, jname, null));
-				logger.info("> load fields %s>%s", jname, col);
-				}
-			else if(fieldcfg instanceof JsonObject)
-				{
-				JsonObject o=(JsonObject)fieldcfg;
-				Class<?> clazz=Class.forName(o.getString("class"));
+			JsonObject fieldcfg=fields.getJsonObject(jname);
+			Class<?> clazz=Class.forName(fieldcfg.getString("class"));
 
-				Set<Entity.Entry> set=new HashSet<Entity.Entry>();
+			Set<Entity.Entry> set=new HashSet<Entity.Entry>();
 
-				JsonValue colcfg=o.opt("columns");
-				if(colcfg!=null)
-					loadCol(set, table, colcfg);
+			JsonObject colcfg=fieldcfg.optJsonObject("columns");
+			if(colcfg!=null)
+				loadCol(set, table, colcfg);
 
-				JsonObject fc=o.optJsonObject("fields");
-				if(fc!=null)
-					loadField(table, fc, set);
+			JsonObject fc=fieldcfg.optJsonObject("fields");
+			if(fc!=null)
+				loadField(table, fc, set);
 
-				entries.add(new Entity.EntityEntry(new Entity<>(clazz, table, set), jname, null));
-				}
+			entries.add(new Entity.EntityEntry(new Entity<>(clazz, table, set), jname, null));
 			}
 		}
 
@@ -118,36 +102,22 @@ public class Database
 			try
 				{
 				Class<?> c=Class.forName(clazz);
-				JsonValue v=daosCfg.get(clazz);
+				JsonObject o=daosCfg.getJsonObject(clazz);
 				Set<Entity.Entry> entries=new HashSet<Entity.Entry>();
-				Table table;
-				if(v instanceof JsonObject)
-					{
-					JsonObject o=(JsonObject)v;
-					String t=o.getString("table");
-					JsonValue colcfg=o.opt("columns");
-					JsonObject fields=o.optJsonObject("fields");
-					logger.info("load dao for %s", t);
-					if(!caseSensitive)
-						t=t.toLowerCase();
-					table=tables.get(t);
 
-					if(colcfg!=null)
-						loadCol(entries, table, colcfg);
-					if(fields!=null)
-						loadField(table, fields, entries);
-					}
-				else if(v instanceof JsonString)
-					{
-					String t=((JsonString)v).value();
-					if(!caseSensitive)
-						t=t.toLowerCase();
-					table=tables.get(t);
-					for(Column col:table.getColumns())
-						entries.add(new Entity.ColEntry(col, null, null));
-					}
-				else
-					throw new JsonException("Expected JsonObject or JsonString for '"+clazz+"' daos");
+				String t=o.getString("table");
+				JsonObject colcfg=o.optJsonObject("columns");
+				JsonObject fields=o.optJsonObject("fields");
+
+				logger.info("load dao for %s", t);
+				if(!caseSensitive)
+					t=t.toLowerCase();
+				Table table=tables.get(t);
+
+				if(colcfg!=null)
+					loadCol(entries, table, colcfg);
+				if(fields!=null)
+					loadField(table, fields, entries);
 
 				mapping.put(c, new Entity<>(c, table, entries));
 				}
@@ -255,20 +225,30 @@ public class Database
 		sql.append(e.table.getName());
 		sql.append(" SET ");
 
-		boolean first=true;
+		boolean coma=false;
 		for(Entry en:e.entries)
 			{
-			if(!first)
+			if(coma)
 				sql.append(',');
-			else
-				first=false;
-			OrmUtils.appendUpdate(sql, en);
+			coma=OrmUtils.appendUpdate(sql, en, false);
+			}
+		sql.append(" WHERE ");
+		coma=false;
+		for(Entry en:e.entries)
+			{
+			if(coma)
+				sql.append(',');
+			coma=OrmUtils.appendUpdate(sql, en, true);
 			}
 		Query q=new Query(this, sql.toString(), Statement.NO_GENERATED_KEYS);
 		int i=1;
 		for(Entry en:e.entries)
 			{
-			i=OrmUtils.appendValue(q, i, en, o);
+			i=OrmUtils.appendValue(q, i, en, o, false);
+			}
+		for(Entry en:e.entries)
+			{
+			i=OrmUtils.appendValue(q, i, en, o, true);
 			}
 		ret=q.executeUpdate();
 		q.close();
@@ -286,25 +266,21 @@ public class Database
 		sql.append("INSERT INTO  ");
 		sql.append(e.table.getName());
 		sql.append(" (");
-		boolean first=true;
+		boolean coma=false;
 		for(Entry en:e.entries)
 			{
-			if(!first)
+			if(coma)
 				sql.append(',');
-			else
-				first=false;
-			OrmUtils.appendColName(keys, sql, en);
+			coma=OrmUtils.appendColName(keys, sql, en, o);
 			}
 		sql.append(") VALUES (");
 
-		first=true;
+		coma=false;
 		for(Entry en:e.entries)
 			{
-			if(!first)
+			if(coma)
 				sql.append(',');
-			else
-				first=false;
-			OrmUtils.appendInsertValues(sql, en);
+			coma=OrmUtils.appendInsertValues(sql, en, o);
 			}
 		sql.append(')');
 		Query q=new Query(this, sql.toString(), Statement.RETURN_GENERATED_KEYS);

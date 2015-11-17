@@ -1,13 +1,10 @@
 package unknow.orm;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.*;
 
 import java.io.*;
-import java.net.*;
 import java.nio.file.*;
 import java.sql.*;
-import java.util.*;
 
 import javax.naming.*;
 
@@ -22,10 +19,17 @@ public class Test
 	{
 	public static Database db;
 
-	public static void main(String[] arg) throws ClassNotFoundException, ClassCastException, InstantiationException, IllegalAccessException, FileNotFoundException, SQLException, JsonException, NamingException
+	public static void main(String[] arg) throws ClassNotFoundException, ClassCastException, InstantiationException, IllegalAccessException, SQLException, JsonException, NamingException, IOException
 		{
-		init();
-		new Test().insert();
+		try
+			{
+			init();
+			new Test().insertAutoIncrement();
+			}
+		finally
+			{
+			cleanUp();
+			}
 		}
 
 	@BeforeClass
@@ -62,6 +66,26 @@ public class Test
 
 				assertEquals("retreiving object!=inserted", e, t);
 				}
+			}
+		}
+
+	@org.junit.Test
+	public void insertAutoIncrement() throws SQLException
+		{
+		TestEntity t=new TestEntity(null, "test", 1);
+
+		db.insert(t);
+
+		try (Query q=db.createQuery("select {t} from test t where id=?", new String[] {"t"}, new Class[] {TestEntity.class}))
+			{
+			q.setInt(1, t.id);
+			QueryResult rs=q.execute();
+
+			assertTrue("failed to get generated object", rs.next());
+
+			TestEntity e=rs.getEntity("t");
+
+			assertEquals("retreiving object!=inserted", e, t);
 			}
 		}
 

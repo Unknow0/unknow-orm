@@ -9,6 +9,7 @@ import java.util.*;
 
 import unknow.common.*;
 import unknow.orm.mapping.*;
+import unknow.orm.mapping.Entity.ColEntry;
 import unknow.orm.mapping.Entity.*;
 
 public class OrmUtils
@@ -188,7 +189,11 @@ public class OrmUtils
 		{
 		if(e instanceof ColEntry)
 			{
-			q.setObject(i++, getValue((ColEntry)e, o));
+			ColEntry en=(ColEntry)e;
+
+			Object v=getValue(en, o);
+			if(!en.ai||v!=null)
+				q.setObject(i++, v);
 			}
 		else
 			{
@@ -198,6 +203,25 @@ public class OrmUtils
 		return i;
 		}
 
+	public static int appendValue(Query q, int i, Entry e, Object o, boolean key) throws SQLException
+		{
+		if(e instanceof ColEntry)
+			{
+			ColEntry en=(ColEntry)e;
+			if(en.key==key)
+				{
+				q.setObject(i++, getValue(en, o));
+				}
+			}
+		else
+			{
+			for(Entry en:((EntityEntry)e).entity.entries)
+				i=appendValue(q, i, en, o);
+			}
+		return i;
+		}
+
+	// TODO cache reflection? precompile in ColEntry?
 	public static Object getValue(ColEntry e, Object o) throws SQLException
 		{
 		Class<?> cl=o.getClass();
@@ -244,64 +268,88 @@ public class OrmUtils
 			}
 		}
 
-	public static void appendUpdate(StringBuilder sql, Entry e)
+	public static boolean appendUpdate(StringBuilder sql, Entry e, boolean key)
 		{
+		boolean r=false;
 		if(e instanceof Entity.ColEntry)
 			{
-			String col=((ColEntry)e).col.getName();
-			sql.append(col).append("= ?");
+			ColEntry en=(ColEntry)e;
+			if(en.key==key)
+				r=true;
+			if(r)
+				sql.append(en.col.getName()).append("= ?");
 			}
 		else
 			{
-			boolean first=true;
 			for(Entry en:((EntityEntry)e).entity.entries)
 				{
-				if(first)
-					first=false;
-				else
+				if(r)
 					sql.append(",");
-				appendUpdate(sql, en);
+				r|=appendUpdate(sql, en, key);
 				}
 			}
+		return r;
 		}
 
-	public static void appendColName(List<Entity.ColEntry> keys, StringBuilder sql, Entry e)
+	/**
+	 * @return if a colName was added
+	 */
+	public static boolean appendColName(List<Entity.ColEntry> keys, StringBuilder sql, Entry e, Object o) throws SQLException
 		{
+		boolean r=false;
 		if(e instanceof Entity.ColEntry)
 			{
-			sql.append(((ColEntry)e).col.getName());
-			if(((ColEntry)e).aiKey!=null&&((ColEntry)e).aiKey)
+			ColEntry en=(ColEntry)e;
+			if(en.ai)
+				{
 				keys.add((ColEntry)e);
+				Object v=getValue(en, o);
+				if(v!=null)
+					r=true;
+				}
+			else
+				r=true;
+			if(r)
+				sql.append(((ColEntry)e).col.getName());
 			}
 		else
 			{
-			boolean first=false;
 			for(Entry en:((EntityEntry)e).entity.entries)
 				{
-				if(first)
-					first=false;
-				else
+				if(r)
 					sql.append(",");
-				appendColName(keys, sql, en);
+				r|=appendColName(keys, sql, en, o);
 				}
 			}
+		return r;
 		}
 
-	public static void appendInsertValues(StringBuilder sql, Entry e)
+	public static boolean appendInsertValues(StringBuilder sql, Entry e, Object o) throws SQLException
 		{
+		boolean r=false;
 		if(e instanceof Entity.ColEntry)
-			sql.append("?");
+			{
+			ColEntry en=(ColEntry)e;
+			if(en.ai)
+				{
+				Object v=getValue(en, o);
+				if(v!=null)
+					r=true;
+				}
+			else
+				r=true;
+			if(r)
+				sql.append("?");
+			}
 		else
 			{
-			boolean first=true;
 			for(Entry en:((EntityEntry)e).entity.entries)
 				{
-				if(first)
-					first=false;
-				else
+				if(r)
 					sql.append(",");
-				appendInsertValues(sql, en);
+				r|=appendInsertValues(sql, en, o);
 				}
 			}
+		return r;
 		}
 	}

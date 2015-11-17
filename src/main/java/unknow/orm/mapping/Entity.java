@@ -156,17 +156,20 @@ public class Entity<T>
 	public static class ColEntry extends Entry
 		{
 		public Column col;
-		public Boolean aiKey;
+		public boolean ai;
+		public boolean key;
 
-		public ColEntry(Column col, String jname, Boolean aiKey)
+		public ColEntry(Column col, String jname, boolean ai, boolean key)
 			{
-			this(col, jname, null, aiKey);
+			this(col, jname, null, ai, key);
 			}
 
-		public ColEntry(Column col, String javaName, String setter, Boolean aiKey)
+		public ColEntry(Column col, String javaName, String setter, boolean ai, boolean key)
 			{
 			super(javaName, setter);
 			this.col=col;
+			this.ai=ai;
+			this.key=key;
 			}
 		}
 

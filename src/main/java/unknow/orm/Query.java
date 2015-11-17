@@ -121,7 +121,7 @@ public class Query implements AutoCloseable
 
 		String sql=sb.toString();
 		log.trace(sql);
-		st=co.prepareStatement(sql);
+		st=co.prepareStatement(sql, genKey);
 		}
 
 	public QueryResult execute() throws SQLException

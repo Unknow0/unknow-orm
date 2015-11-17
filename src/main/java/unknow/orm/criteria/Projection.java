@@ -50,7 +50,7 @@ public abstract class Projection
 			List<String> keys=new ArrayList<String>();
 			for(Entity.Entry e:entity.entries)
 				{
-				if(e instanceof Entity.ColEntry&&((Entity.ColEntry)e).aiKey)
+				if(e instanceof Entity.ColEntry&&((Entity.ColEntry)e).key)
 					keys.add(e.javaName);
 				}
 			return keys;

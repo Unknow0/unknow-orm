@@ -10,7 +10,7 @@ public class TestEntity
 		{
 		}
 
-	public TestEntity(int id, String name, int value)
+	public TestEntity(Integer id, String name, Integer value)
 		{
 		this.id=id;
 		this.name=name;
