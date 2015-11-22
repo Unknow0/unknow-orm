@@ -2,7 +2,7 @@
 	<modelVersion>4.0.0</modelVersion>
 	<groupId>unknow.orm</groupId>
 	<artifactId>unknow-orm</artifactId>
-	<version>1.0</version>
+	<version>1.1-SNAPSHOT</version>
 
 	<name>Unknow orm</name>
 	<description>Simlpe ORM</description>
@@ -17,7 +17,7 @@
 	<scm>
 		<url>https://github.com/Unknow0/unknow-orm.git</url>
 		<connection>scm:git:https://github.com/Unknow0/unknow-orm.git</connection>
-	  <tag>unknow-orm-1.0</tag>
+	  <tag>HEAD</tag>
   </scm>
 	<developers>
 		<developer>
