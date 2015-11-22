@@ -17,6 +17,7 @@ import java.util.*;
 import org.apache.logging.log4j.*;
 
 import unknow.common.*;
+import unknow.common.data.*;
 
 public class Entity<T>
 	{
@@ -59,6 +60,16 @@ public class Entity<T>
 
 	public T build(Database database, String alias, ResultSet rs) throws SQLException
 		{
+		ResultSetMetaData metaData=rs.getMetaData();
+		int columnCount=metaData.getColumnCount();
+		List<String> colomnLabels=new SortedList<String>(columnCount);
+		for(int i=0; i<columnCount; i++)
+			colomnLabels.add(metaData.getColumnLabel(i+1));
+		return build(database, alias, rs, colomnLabels);
+		}
+
+	public T build(Database database, String alias, ResultSet rs, List<String> columnLabels) throws SQLException
+		{
 		try
 			{
 			T entity=clazz.newInstance();
@@ -71,10 +82,14 @@ public class Entity<T>
 				if(e instanceof ColEntry)
 					{
 					ColEntry c=(ColEntry)e;
-					value=database.convert(expected, c.col, rs, alias);
+					String label=alias+'.'+c.col.getName();
+					if(columnLabels.contains(label))
+						value=database.convert(expected, c.col, rs, label);
+					else
+						value=database.defaultValue(expected, c.col);
 					}
 				else
-					value=((EntityEntry)e).entity.build(database, alias, rs);
+					value=((EntityEntry)e).entity.build(database, alias, rs, columnLabels);
 				try
 					{
 					try

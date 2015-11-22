@@ -22,11 +22,11 @@ public class TestEntity
 		if(!(o instanceof TestEntity))
 			return false;
 		TestEntity e=(TestEntity)o;
-		if(id==null&&e.id!=null||id!=null&&e.id==null||id!=e.id)
+		if(id==null&&e.id!=null||id!=null&&e.id==null||!id.equals(e.id))
 			return false;
 		if(name==null&&e.name!=null||name!=null&&e.name==null||!name.equals(e.name))
 			return false;
-		if(value==null&&e.value!=null||value!=null&&e.value==null||value!=e.value)
+		if(value==null&&e.value!=null||value!=null&&e.value==null||!value.equals(e.value))
 			return false;
 		return true;
 		}

@@ -1,5 +1,6 @@
 package unknow.orm.criteria;
 
+import java.sql.*;
 import java.util.*;
 
 import unknow.orm.mapping.*;
@@ -44,5 +45,11 @@ public class Join extends Criteria
 	public void on(On r)
 		{
 		on.add(r);
+		}
+
+	void setValues(PreparedStatement st) throws SQLException
+		{
+		for(Restriction r:where)
+			r.setValue(st);
 		}
 	}

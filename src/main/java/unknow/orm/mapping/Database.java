@@ -153,9 +153,8 @@ public class Database
 			}
 		}
 
-	public <T> T convert(Class<T> expected, Column col, ResultSet rs, String alias) throws SQLException
+	public <T> T convert(Class<T> expected, Column col, ResultSet rs, String label) throws SQLException
 		{
-		String label=alias+"."+col.getName();
 		if(typesMapping!=null)
 			{
 			for(TypeConvertor typeConvert:typesMapping)
@@ -165,6 +164,19 @@ public class Database
 				}
 			}
 		return OrmUtils.convert(expected, col, rs, label);
+		}
+
+	public <T> T defaultValue(Class<T> expected, Column col)
+		{
+		if(typesMapping!=null)
+			{
+			for(TypeConvertor typeConvert:typesMapping)
+				{
+				if(typeConvert.hasDefault(expected, col))
+					return typeConvert.defaultValue(expected, col);
+				}
+			}
+		return null;
 		}
 
 	@SuppressWarnings("unchecked")

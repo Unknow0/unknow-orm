@@ -135,6 +135,8 @@ public class Criteria
 
 		for(Restriction r:where)
 			r.setValue(st);
+		for(Join j:join)
+			j.setValues(st);
 		return new Result(db, co, st, map);
 		}
 
