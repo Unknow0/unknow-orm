@@ -30,6 +30,7 @@ public class PooledDataSource extends SimpleDataSource
 		CoWrapper co=idleConnection.poll();
 		if(co==null)
 			co=new CoWrapper(super.getConnection());
+		// TODO validate connection
 		return co;
 		}
 

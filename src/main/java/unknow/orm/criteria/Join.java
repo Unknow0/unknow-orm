@@ -17,7 +17,8 @@ public class Join extends Criteria
 
 	protected void appendSelect(StringBuilder sb)
 		{
-		if(!projection.properties(entity).isEmpty())
+		Collection<String> proj=projection.properties(entity);
+		if(proj==null||!proj.isEmpty())
 			sb.append(',');
 		super.appendSelect(sb);
 		}

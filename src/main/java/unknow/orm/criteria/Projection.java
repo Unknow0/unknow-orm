@@ -61,12 +61,7 @@ public abstract class Projection
 		{
 		public Collection<String> properties(Entity<?> entity)
 			{
-			List<String> properties=new ArrayList<String>();
-			for(Entity.Entry e:entity.entries)
-				{
-				properties.add(e.javaName);
-				}
-			return properties;
+			return null;
 			}
 		}
 

@@ -51,13 +51,15 @@ public class Database
 		loadDaos(cfg);
 		}
 
-	private void loadCol(Set<Entry> entries, Table table, JsonObject colcfg) throws JsonException
+	private void loadCol(Set<Entry> entries, Table table, JsonObject colcfg) throws JsonException, SQLException
 		{
 		Entity.ColEntry e=null;
 		for(String colName:colcfg)
 			{
 			JsonValue opt=colcfg.get(colName);
 			Column col=table.getColumn(colName, caseSensitive);
+			if(col==null)
+				throw new SQLException("Column '"+colName+"' not found in table '"+table.getName()+"'");
 			if(opt instanceof JsonString)
 				{
 				e=new Entity.ColEntry(col, ((JsonString)opt).value(), col.isAutoIncrement(), false);
@@ -74,7 +76,7 @@ public class Database
 			}
 		}
 
-	public void loadField(Table table, JsonObject fields, Set<Entity.Entry> entries) throws JsonException, ClassNotFoundException
+	public void loadField(Table table, JsonObject fields, Set<Entity.Entry> entries) throws JsonException, ClassNotFoundException, SQLException
 		{
 		for(String jname:fields)
 			{
