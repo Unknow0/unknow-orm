@@ -1,16 +1,16 @@
 package unknow.orm;
 
-import java.lang.reflect.*;
 import java.math.*;
 import java.sql.*;
-import java.sql.Array;
 import java.sql.Date;
 import java.util.*;
 
 import unknow.common.*;
 import unknow.orm.mapping.*;
 import unknow.orm.mapping.Entity.ColEntry;
-import unknow.orm.mapping.Entity.*;
+import unknow.orm.mapping.Entity.EntityEntry;
+import unknow.orm.mapping.Entity.Entry;
+import unknow.orm.reflect.*;
 
 public class OrmUtils
 	{
@@ -185,13 +185,13 @@ public class OrmUtils
 			}
 		}
 
-	public static int appendValue(Query q, int i, Entry e, Object o) throws SQLException
+	public static int appendValue(Query q, int i, Entry e, Object o) throws SQLException, ReflectException
 		{
 		if(e instanceof ColEntry)
 			{
 			ColEntry en=(ColEntry)e;
 
-			Object v=getValue(en, o);
+			Object v=e.getter.get(o);
 			if(!en.ai||v!=null)
 				q.setObject(i++, v);
 			}
@@ -203,14 +203,14 @@ public class OrmUtils
 		return i;
 		}
 
-	public static int appendValue(Query q, int i, Entry e, Object o, boolean key) throws SQLException
+	public static int appendValue(Query q, int i, Entry e, Object o, boolean key) throws SQLException, ReflectException
 		{
 		if(e instanceof ColEntry)
 			{
 			ColEntry en=(ColEntry)e;
 			if(en.key==key)
 				{
-				q.setObject(i++, getValue(en, o));
+				q.setObject(i++, e.getter.get(o));
 				}
 			}
 		else
@@ -219,53 +219,6 @@ public class OrmUtils
 				i=appendValue(q, i, en, o);
 			}
 		return i;
-		}
-
-	// TODO cache reflection? precompile in ColEntry?
-	public static Object getValue(ColEntry e, Object o) throws SQLException
-		{
-		Class<?> cl=o.getClass();
-		try
-			{
-			Method m=Reflection.getMethod(cl, e.getter);
-			if(m==null)
-				{
-				Field f=Reflection.getField(cl, e.javaName);
-				if(f!=null)
-					return f.get(o);
-				else
-					throw new SQLException("can't found '"+e.javaName+"' or '"+e.getter+"()' in '"+cl.getName()+"'");
-				}
-			else
-				return m.invoke(o);
-			}
-		catch (Exception e1)
-			{
-			throw new SQLException(e1);
-			}
-		}
-
-	public static void setValue(ColEntry e, Object o, Object v) throws SQLException
-		{
-		Class<?> cl=o.getClass();
-		try
-			{
-			Method m=Reflection.getMethod(cl, e.setter, v.getClass());
-			if(m==null)
-				{
-				Field f=Reflection.getField(cl, e.javaName, v.getClass());
-				if(f!=null)
-					f.set(o, v);
-				else
-					throw new SQLException("can't found '"+e.javaName+"' or '"+e.getter+"()' in '"+cl.getName()+"'");
-				}
-			else
-				m.invoke(o, v);
-			}
-		catch (Exception e1)
-			{
-			throw new SQLException(e1);
-			}
 		}
 
 	public static boolean appendUpdate(StringBuilder sql, Entry e, boolean key)
@@ -293,8 +246,9 @@ public class OrmUtils
 
 	/**
 	 * @return if a colName was added
+	 * @throws ReflectException 
 	 */
-	public static boolean appendColName(List<Entity.ColEntry> keys, StringBuilder sql, Entry e, Object o) throws SQLException
+	public static boolean appendColName(List<Entity.ColEntry> keys, StringBuilder sql, Entry e, Object o) throws SQLException, ReflectException
 		{
 		boolean r=false;
 		if(e instanceof Entity.ColEntry)
@@ -303,7 +257,7 @@ public class OrmUtils
 			if(en.ai)
 				{
 				keys.add((ColEntry)e);
-				Object v=getValue(en, o);
+				Object v=e.getter.get(o);
 				if(v!=null)
 					r=true;
 				}
@@ -324,7 +278,7 @@ public class OrmUtils
 		return r;
 		}
 
-	public static boolean appendInsertValues(StringBuilder sql, Entry e, Object o) throws SQLException
+	public static boolean appendInsertValues(StringBuilder sql, Entry e, Object o) throws SQLException, ReflectException
 		{
 		boolean r=false;
 		if(e instanceof Entity.ColEntry)
@@ -332,7 +286,7 @@ public class OrmUtils
 			ColEntry en=(ColEntry)e;
 			if(en.ai)
 				{
-				Object v=getValue(en, o);
+				Object v=e.getter.get(o);
 				if(v!=null)
 					r=true;
 				}

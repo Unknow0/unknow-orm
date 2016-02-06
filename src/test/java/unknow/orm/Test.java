@@ -1,6 +1,10 @@
 package unknow.orm;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 
 import java.io.*;
 import java.nio.file.*;
@@ -12,10 +16,10 @@ import org.junit.*;
 import org.junit.rules.*;
 
 import unknow.common.*;
-import unknow.common.tools.*;
 import unknow.json.*;
 import unknow.orm.criteria.*;
 import unknow.orm.mapping.*;
+import unknow.orm.reflect.*;
 
 public class Test
 	{
@@ -25,7 +29,7 @@ public class Test
 	public ExpectedException thrown=ExpectedException.none();
 
 	@BeforeClass
-	public static void init() throws SQLException, ClassNotFoundException, ClassCastException, InstantiationException, IllegalAccessException, JsonException, NamingException, FileNotFoundException
+	public static void init() throws SQLException, ClassNotFoundException, ClassCastException, InstantiationException, IllegalAccessException, JsonException, NamingException, FileNotFoundException, ReflectException
 		{
 		if(!Files.exists(Paths.get("target/db")))
 			{
@@ -44,7 +48,7 @@ public class Test
 		}
 
 	@org.junit.Test
-	public void insert() throws SQLException
+	public void insert() throws SQLException, ReflectException
 		{
 		TestEntity t=new TestEntity(50, "test", 1);
 
@@ -65,7 +69,7 @@ public class Test
 		}
 
 	@org.junit.Test
-	public void insertAutoIncrement() throws SQLException
+	public void insertAutoIncrement() throws SQLException, ReflectException
 		{
 		TestEntity t=new TestEntity(null, "test", 1);
 
@@ -88,7 +92,7 @@ public class Test
 		}
 
 	@org.junit.Test
-	public void insertUpdate() throws SQLException
+	public void insertUpdate() throws SQLException, ReflectException
 		{
 		TestEntity t=new TestEntity(5, "test", 1);
 
@@ -114,7 +118,7 @@ public class Test
 		}
 
 	@org.junit.Test
-	public void insertError() throws SQLException
+	public void insertError() throws SQLException, ReflectException
 		{
 		thrown.expect(SQLException.class);
 		TestEntity t=new TestEntity(5, "test", 1);
@@ -123,7 +127,7 @@ public class Test
 		}
 
 	@org.junit.Test
-	public void criteriaSimple() throws SQLException
+	public void criteriaSimple() throws SQLException, ReflectException
 		{
 		TestEntity t=new TestEntity(5, "test", 1);
 		db.insert(t);
@@ -133,14 +137,14 @@ public class Test
 		try (QueryResult rs=crit.execute())
 			{
 			assertTrue("result not found", rs.next());
-			TestEntity e=rs.getEntity("this");
+			TestEntity e=rs.getEntity(null);
 			assertEquals(t, e);
 			assertFalse(rs.next());
 			}
 		}
 
 	@org.junit.Test
-	public void criteriaComplex() throws SQLException
+	public void criteriaComplex() throws SQLException, ReflectException
 		{
 		TestEntity t=new TestEntity(5, "test", 1);
 		db.insert(t);
@@ -159,7 +163,7 @@ public class Test
 		}
 
 	@org.junit.Test
-	public void criteriaPartial() throws SQLException
+	public void criteriaPartial() throws SQLException, ReflectException
 		{
 		TestEntity t=new TestEntity(5, "test", 1);
 		db.insert(t);
@@ -180,7 +184,7 @@ public class Test
 		}
 
 	@org.junit.Test
-	public void criteriaJoin() throws SQLException
+	public void criteriaJoin() throws SQLException, ReflectException
 		{
 		TestEntity t=new TestEntity(5, "test", 1);
 		db.insert(t);
@@ -200,7 +204,7 @@ public class Test
 		}
 
 	@org.junit.Test
-	public void criteriaJoinComplex() throws SQLException
+	public void criteriaJoinComplex() throws SQLException, ReflectException
 		{
 		TestEntity t=new TestEntity(5, "test", 1);
 		db.insert(t);

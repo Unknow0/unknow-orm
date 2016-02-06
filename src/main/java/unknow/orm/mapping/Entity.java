@@ -18,19 +18,20 @@ import org.apache.logging.log4j.*;
 
 import unknow.common.*;
 import unknow.common.data.*;
+import unknow.orm.reflect.*;
 
 public class Entity<T>
 	{
 	private static final Logger logger=LogManager.getFormatterLogger(Entity.class);
 
-	private Class<T> clazz;
+	private Instantiator<T> instantiator;
 
 	public final Set<Entry> entries;
 	public Table table;
 
-	public Entity(Class<T> cl, Table t, Set<Entry> ent)
+	public Entity(ReflectFactory reflect, Class<T> cl, Table t, Set<Entry> ent)
 		{
-		clazz=cl;
+		instantiator=reflect.createInstantiator(cl);
 		table=t;
 		entries=ent;
 		}
@@ -49,9 +50,14 @@ public class Entity<T>
 			if(e instanceof ColEntry)
 				{
 				String col=((ColEntry)e).col.getName();
-				sql.append(alias).append('.').append(col);
+				if(alias!=null)
+					sql.append(alias).append('.');
+				sql.append(col);
 				sql.append(" as ");
-				sql.append('"').append(alias).append('.').append(col).append('"');
+				sql.append('"');
+				if(alias!=null)
+					sql.append(alias).append('.');
+				sql.append(col).append('"');
 				}
 			else
 				((EntityEntry)e).entity.append(sql, alias, restrictions);
@@ -72,70 +78,39 @@ public class Entity<T>
 		{
 		try
 			{
-			T entity=clazz.newInstance();
+			T entity=instantiator.newInstance();
 			for(Entry e:entries)
 				{
-				Field field=Reflection.getField(clazz, e.javaName);
-				Class<?> expected=field.getType();
-
 				Object value;
 				if(e instanceof ColEntry)
 					{
 					ColEntry c=(ColEntry)e;
-					String label=alias+'.'+c.col.getName();
+					String label=c.col.getName();
+					if(alias!=null)
+						label=alias+'.'+label;
 					if(columnLabels.contains(label))
-						value=database.convert(expected, c.col, rs, label);
+						value=database.convert(c.type, c.col, rs, label);
 					else
-						value=database.defaultValue(expected, c.col);
+						value=database.defaultValue(c.type, c.col);
 					}
 				else
 					value=((EntityEntry)e).entity.build(database, alias, rs, columnLabels);
+
 				try
 					{
-					try
-						{
-						Method m=Reflection.getMethod(clazz, e.setter, expected);
-						if(m!=null)
-							{
-							logger.trace(" -> setting %s %s", e.javaName, value);
-							m.invoke(entity, value);
-							continue;
-							}
-						}
-					catch (IllegalArgumentException ex)
-						{
-						logger.warn("fail to call '"+e.setter+"' on '"+entity+"'", ex);
-						}
-					catch (InvocationTargetException ex)
-						{
-						logger.warn("fail to call '"+e.setter+"' on '"+entity+"'", ex);
-						}
-					try
-						{
-						field.setAccessible(true);
-						logger.trace(" -> setting %s %s", e.javaName, value);
-						field.set(entity, value);
-						}
-					catch (SecurityException ex)
-						{
-						throw new SQLException("can't set '"+e.javaName+"' in '"+clazz.getName()+"'", ex);
-						}
+					e.setter.set(entity, value);
 					}
-				catch (IllegalAccessException ex)
+				catch (ReflectException ex)
 					{
-					throw new SQLException("can't execute '"+e.setter+"("+expected.getName()+")' or set '"+e.javaName+"' in '"+clazz.getName()+"'", ex);
+					throw new SQLException(ex);
 					}
 				}
-			logger.trace("build '"+clazz+"' => '"+entity+"'");
+			logger.trace("build '"+instantiator.className()+"' => '"+entity+"'");
 			return entity;
 			}
-		catch (InstantiationException e)
+		catch (ReflectException e)
 			{
-			throw new SQLException("Can't create '"+clazz.getName()+"'", e);
-			}
-		catch (IllegalAccessException e)
-			{
-			throw new SQLException("Can't create '"+clazz.getName()+"'", e);
+			throw new SQLException("Can't create '"+instantiator.className()+"'", e);
 			}
 		}
 
@@ -155,15 +130,27 @@ public class Entity<T>
 
 	public static class Entry
 		{
-		public String setter;
-		public String javaName;
-		public String getter;
+		public final String javaName;
 
-		public Entry(String javaName, String setter) // TODO setter & javaName format
+		public final Getter getter;
+		public final Setter setter;
+
+		public final Class<?> type;
+
+		public Entry(ReflectFactory reflect, Class<?> clazz, String javaName, String setter) // TODO setter & javaName format
 			{
 			this.javaName=javaName;
-			this.setter=setter!=null?setter:"set"+Character.toUpperCase(javaName.charAt(0))+javaName.substring(1);
-			this.getter="get"+Character.toUpperCase(javaName.charAt(0))+javaName.substring(1);
+
+			setter=setter!=null?setter:"set"+Character.toUpperCase(javaName.charAt(0))+javaName.substring(1);
+			String getter="get"+Character.toUpperCase(javaName.charAt(0))+javaName.substring(1);
+
+			Field field=Reflection.getField(clazz, javaName);
+			Method sm=Reflection.getMethod(clazz, setter, field.getType());
+			Method gm=Reflection.getMethod(clazz, getter, field.getType());
+
+			this.type=field.getType();
+			this.setter=reflect.createSetter(field, sm);
+			this.getter=reflect.createGetter(field, gm);
 			}
 
 		public String toString()
@@ -178,14 +165,14 @@ public class Entity<T>
 		public boolean ai;
 		public boolean key;
 
-		public ColEntry(Column col, String jname, boolean ai, boolean key)
+		public ColEntry(ReflectFactory reflect, Class<?> clazz, Column col, String jname, boolean ai, boolean key)
 			{
-			this(col, jname, null, ai, key);
+			this(reflect, clazz, col, jname, null, ai, key);
 			}
 
-		public ColEntry(Column col, String javaName, String setter, boolean ai, boolean key)
+		public ColEntry(ReflectFactory reflect, Class<?> clazz, Column col, String javaName, String setter, boolean ai, boolean key)
 			{
-			super(javaName, setter);
+			super(reflect, clazz, javaName, setter);
 			this.col=col;
 			this.ai=ai;
 			this.key=key;
@@ -196,9 +183,9 @@ public class Entity<T>
 		{
 		public Entity<?> entity;
 
-		public EntityEntry(Entity<?> entity, String javaName, String setter)
+		public EntityEntry(ReflectFactory reflect, Class<?> clazz, Entity<?> entity, String javaName, String setter)
 			{
-			super(javaName, setter);
+			super(reflect, clazz, javaName, setter);
 			this.entity=entity;
 			}
 		}

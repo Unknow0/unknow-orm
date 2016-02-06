@@ -77,7 +77,9 @@ public class Criteria
 		StringBuilder sb=new StringBuilder("select ");
 		appendSelect(sb);
 
-		sb.append(" from ").append(entity.table.getName()).append(" ").append(alias);
+		sb.append(" from ").append(entity.table.getName()).append(" ");
+		if(alias!=null)
+			sb.append(alias);
 		for(Join j:join)
 			{
 			j.append(sb, alias);
@@ -97,6 +99,7 @@ public class Criteria
 		if(map.containsKey(alias))
 			throw new SQLException("alias '"+alias+"' already defined");
 		map.put(alias, entity);
+		
 		for(Join j:join)
 			j.populateAlias(map);
 		}

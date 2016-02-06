@@ -21,12 +21,13 @@ import unknow.json.*;
 import unknow.json.JsonValue.JsonString;
 import unknow.orm.ds.*;
 import unknow.orm.mapping.*;
+import unknow.orm.reflect.*;
 
 public class Mappings
 	{
 	private static Map<String,Database> mapping=new HashMap<String,Database>();
 
-	public static void load(String key, Cfg cfg) throws JsonException, SQLException, ClassNotFoundException, ClassCastException, InstantiationException, IllegalAccessException, NamingException
+	public static void load(String key, Cfg cfg) throws JsonException, SQLException, ClassNotFoundException, ClassCastException, InstantiationException, IllegalAccessException, NamingException, ReflectException
 		{
 		JsonObject o=key==null||key.equals("")?cfg:cfg.getJsonObject(key);
 		for(String db:o)
@@ -35,13 +36,14 @@ public class Mappings
 			}
 		}
 
-	public static void loadMapping(String dbName, JsonObject dbCfg) throws JsonException, SQLException, ClassNotFoundException, ClassCastException, InstantiationException, IllegalAccessException, NamingException
+	public static void loadMapping(String dbName, JsonObject dbCfg) throws JsonException, SQLException, ClassNotFoundException, ClassCastException, InstantiationException, IllegalAccessException, NamingException, ReflectException
 		{
 		if(!dbCfg.has("connection"))
 			return;
 		JsonObject daos=dbCfg.getJsonObject("daos");
 		JsonObject o=dbCfg.getJsonObject("connection");
 		Boolean caseSensitive=dbCfg.optBoolean("case_sensitive", false);
+		String reflectClass=dbCfg.optString("reflect_factory");
 		String type=o.getString("type");
 		DataSource ds=null;
 		if(type.equals("jdbc"))
@@ -62,23 +64,32 @@ public class Mappings
 		else
 			throw new JsonException("unknown connection type '"+type+"'.");
 
-		Database database=new Database(ds, daos, caseSensitive);
-		mapping.put(dbName, database);
+		ReflectFactory reflect=new ReflectFactory();
 
 		JsonArray a=dbCfg.optJsonArray("types");
+		TypeConvertor[] t=null;
 		if(a!=null)
 			{
-			TypeConvertor[] t=new TypeConvertor[a.length()];
+			t=new TypeConvertor[a.length()];
 			for(int i=0; i<a.length(); i++)
 				{
 				if(a.get(i) instanceof JsonString)
 					{
 					Class<?> clazz=Class.forName(((JsonString)a.get(i)).value());
-					t[i]=(TypeConvertor)clazz.newInstance();
+					Instantiator<?> instantiator=reflect.createInstantiator(clazz);
+					t[i]=(TypeConvertor)instantiator.newInstance();
 					}
 				}
-			database.setTypesMapping(t);
 			}
+		if(reflectClass!=null)
+			{
+			Class<?> cl=Class.forName(reflectClass);
+			Instantiator<?> instantiator=reflect.createInstantiator(cl);
+			reflect=(ReflectFactory)instantiator.newInstance();
+			}
+
+		Database database=new Database(reflect, ds, daos, t, caseSensitive);
+		mapping.put(dbName, database);
 		}
 
 	public static Database getDatabase(String database)

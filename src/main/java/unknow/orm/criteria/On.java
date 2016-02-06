@@ -59,9 +59,13 @@ public abstract class On
 
 		void append(StringBuilder sb, String aliasLeft, String aliasRight)
 			{
-			sb.append(aliasLeft).append('.').append(propLeft);
+			if(aliasLeft!=null)
+				sb.append(aliasLeft).append('.');
+			sb.append(propLeft);
 			sb.append(operation);
-			sb.append(aliasRight).append('.').append(propRight);
+			if(aliasRight!=null)
+				sb.append(aliasRight).append('.');
+			sb.append(propRight);
 			}
 		}
 

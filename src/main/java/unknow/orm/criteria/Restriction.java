@@ -82,7 +82,9 @@ public abstract class Restriction
 		int append(StringBuilder sb, String alias, Entity<?> e, int curParam) throws SQLException
 			{
 			Entity.ColEntry col=e.findCol(property);
-			sb.append(alias).append('.').append(col.col.getName());
+			if(alias!=null)
+				sb.append(alias).append('.');
+			sb.append(col.col.getName());
 			sb.append(operation);
 			if(value!=null)
 				{
@@ -113,7 +115,9 @@ public abstract class Restriction
 		int append(StringBuilder sb, String alias, Entity<?> e, int curParam) throws SQLException
 			{
 			Entity.ColEntry col=e.findCol(property);
-			sb.append(alias).append('.').append(col.col.getName());
+			if(alias!=null)
+				sb.append(alias).append('.');
+			sb.append(col.col.getName());
 			sb.append("is");
 			if(!is)
 				sb.append(" not");

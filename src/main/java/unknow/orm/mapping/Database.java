@@ -23,6 +23,7 @@ import unknow.orm.*;
 import unknow.orm.criteria.*;
 import unknow.orm.mapping.Entity.ColEntry;
 import unknow.orm.mapping.Entity.Entry;
+import unknow.orm.reflect.*;
 
 public class Database
 	{
@@ -39,19 +40,25 @@ public class Database
 	private Map<String,Table> tables=new HashMap<String,Table>();
 	private boolean caseSensitive;
 
+	private ReflectFactory reflect;
+
 	/**
+	 * @param reflect2 
 	 * @param ds datasource to use.
 	 * @param cfg sould contains tables description.
+	 * @param t 
 	 */
-	public Database(DataSource ds, JsonObject cfg, boolean caseSensitive) throws SQLException, JsonException, ClassNotFoundException, ClassCastException
+	public Database(ReflectFactory reflect, DataSource ds, JsonObject cfg, TypeConvertor[] t, boolean caseSensitive) throws SQLException, JsonException, ClassNotFoundException, ClassCastException
 		{
 		this.ds=ds;
 		this.caseSensitive=caseSensitive;
+		this.reflect=reflect;
+		typesMapping=t;
 		loadTablesDesc();
 		loadDaos(cfg);
 		}
 
-	private void loadCol(Set<Entry> entries, Table table, JsonObject colcfg) throws JsonException, SQLException
+	private void loadCol(Set<Entry> entries, Class<?> c, Table table, JsonObject colcfg) throws JsonException, SQLException
 		{
 		Entity.ColEntry e=null;
 		for(String colName:colcfg)
@@ -62,12 +69,12 @@ public class Database
 				throw new SQLException("Column '"+colName+"' not found in table '"+table.getName()+"'");
 			if(opt instanceof JsonString)
 				{
-				e=new Entity.ColEntry(col, ((JsonString)opt).value(), col.isAutoIncrement(), false);
+				e=new Entity.ColEntry(reflect, c, col, ((JsonString)opt).value(), col.isAutoIncrement(), false);
 				}
 			else if(opt instanceof JsonObject)
 				{
 				JsonObject obj=(JsonObject)opt;
-				e=new Entity.ColEntry(col, obj.optString("jname"), obj.optString("setter"), obj.optBoolean("key", false), obj.optBoolean("ai", col.isAutoIncrement()));
+				e=new Entity.ColEntry(reflect, c, col, obj.optString("jname"), obj.optString("setter"), obj.optBoolean("key", false), obj.optBoolean("ai", col.isAutoIncrement()));
 				}
 
 			logger.info("> load col %s> %s", e, col);
@@ -76,7 +83,7 @@ public class Database
 			}
 		}
 
-	public void loadField(Table table, JsonObject fields, Set<Entity.Entry> entries) throws JsonException, ClassNotFoundException, SQLException
+	public void loadField(Table table, Class<?> c, JsonObject fields, Set<Entity.Entry> entries) throws JsonException, ClassNotFoundException, SQLException
 		{
 		for(String jname:fields)
 			{
@@ -87,13 +94,13 @@ public class Database
 
 			JsonObject colcfg=fieldcfg.optJsonObject("columns");
 			if(colcfg!=null)
-				loadCol(set, table, colcfg);
+				loadCol(set, c, table, colcfg);
 
 			JsonObject fc=fieldcfg.optJsonObject("fields");
 			if(fc!=null)
-				loadField(table, fc, set);
+				loadField(table, c, fc, set);
 
-			entries.add(new Entity.EntityEntry(new Entity<>(clazz, table, set), jname, null));
+			entries.add(new Entity.EntityEntry(reflect, clazz, new Entity<>(reflect, clazz, table, set), jname, null));
 			}
 		}
 
@@ -115,13 +122,15 @@ public class Database
 				if(!caseSensitive)
 					t=t.toLowerCase();
 				Table table=tables.get(t);
+				if(table==null)
+					throw new SQLException("Table not found '"+t+"'");
 
 				if(colcfg!=null)
-					loadCol(entries, table, colcfg);
+					loadCol(entries, c, table, colcfg);
 				if(fields!=null)
-					loadField(table, fields, entries);
+					loadField(table, c, fields, entries);
 
-				mapping.put(c, new Entity<>(c, table, entries));
+				mapping.put(c, new Entity<>(reflect, c, table, entries));
 				}
 			catch (ClassNotFoundException e)
 				{
@@ -218,7 +227,7 @@ public class Database
 
 	public Criteria createCriteria(Class<?> entity) throws SQLException
 		{
-		return createCriteria(entity, "this");
+		return createCriteria(entity, null);
 		}
 
 	public Criteria createCriteria(Class<?> entity, String alias) throws SQLException
@@ -228,8 +237,9 @@ public class Database
 
 	/**
 	 * @return number of row updated.
+	 * @throws ReflectException 
 	 */
-	public int update(Object o) throws SQLException
+	public int update(Object o) throws SQLException, ReflectException
 		{
 		Entity<?> e=getMapping(o.getClass());
 		StringBuilder sql=new StringBuilder();
@@ -278,7 +288,7 @@ public class Database
 			sb.setLength(sb.length()-1);
 		}
 
-	public void insert(Object o) throws SQLException
+	public void insert(Object o) throws SQLException, ReflectException
 		{
 		Entity<?> e=getMapping(o.getClass());
 		StringBuilder sql=new StringBuilder();
@@ -318,7 +328,7 @@ public class Database
 		while (krs.next())
 			{
 			ColEntry colEntry=keys.get(i++);
-			OrmUtils.setValue(colEntry, o, krs.getInt(i));
+			colEntry.setter.set(o, krs.getInt(i));
 			}
 		krs.close();
 		q.close();
