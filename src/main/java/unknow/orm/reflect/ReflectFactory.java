@@ -10,7 +10,27 @@ public class ReflectFactory
 	public Setter createSetter(Field field, Method setter)
 		{
 		if(Reflection.hasUnsafe)
+			{
+			Class<?> type=field.getType();
+			if(type.isPrimitive())
+				{
+				if(type.equals(byte.class))
+					return new UnsafeSetter.Byte(field);
+				if(type.equals(char.class))
+					return new UnsafeSetter.Char(field);
+				if(type.equals(short.class))
+					return new UnsafeSetter.Short(field);
+				if(type.equals(int.class))
+					return new UnsafeSetter.Int(field);
+				if(type.equals(long.class))
+					return new UnsafeSetter.Long(field);
+				if(type.equals(float.class))
+					return new UnsafeSetter.Float(field);
+				if(type.equals(double.class))
+					return new UnsafeSetter.Double(field);
+				}
 			return new UnsafeSetter(field);
+			}
 		return new ReflectSetter(field, setter);
 		}
 

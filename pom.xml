@@ -87,7 +87,7 @@
 		<dependency>
 			<groupId>unknow.common</groupId>
 			<artifactId>common</artifactId>
-			<version>1.2</version>
+			<version>1.3</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.logging.log4j</groupId>
