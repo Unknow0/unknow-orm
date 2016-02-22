@@ -88,19 +88,36 @@ public class Database
 		for(String jname:fields)
 			{
 			JsonObject fieldcfg=fields.getJsonObject(jname);
-			Class<?> clazz=Class.forName(fieldcfg.getString("class"));
+			String t=fieldcfg.optString("table");
+			if(t!=null)
+				{
+				if(!caseSensitive)
+					t=t.toLowerCase();
+				table=tables.get(t);
+				if(table==null)
+					throw new SQLException("Table not found '"+t+"'");
+				}
+			String className=fieldcfg.getString("class");
+			try
+				{
+				Class<?> clazz=Class.forName(className);
 
-			Set<Entity.Entry> set=new HashSet<Entity.Entry>();
+				Set<Entity.Entry> set=new HashSet<Entity.Entry>();
 
-			JsonObject colcfg=fieldcfg.optJsonObject("columns");
-			if(colcfg!=null)
-				loadCol(set, c, table, colcfg);
+				JsonObject colcfg=fieldcfg.optJsonObject("columns");
+				if(colcfg!=null)
+					loadCol(set, clazz, table, colcfg);
 
-			JsonObject fc=fieldcfg.optJsonObject("fields");
-			if(fc!=null)
-				loadField(table, c, fc, set);
+				JsonObject fc=fieldcfg.optJsonObject("fields");
+				if(fc!=null)
+					loadField(table, clazz, fc, set);
 
-			entries.add(new Entity.EntityEntry(reflect, clazz, new Entity<>(reflect, clazz, table, set), jname, null));
+				entries.add(new Entity.EntityEntry(reflect, c, new Entity<>(reflect, clazz, table, set), jname, null));
+				}
+			catch (ClassNotFoundException e)
+				{
+				throw new SQLException("no class found for '"+className+"'");
+				}
 			}
 		}
 

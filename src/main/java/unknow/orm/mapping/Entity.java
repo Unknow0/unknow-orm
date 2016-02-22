@@ -125,7 +125,7 @@ public class Entity<T>
 				throw new SQLException("composite not supported"); // TODO
 				}
 			}
-		return null;
+		throw new SQLException("Property '"+property+"' not found on '"+instantiator.className()+"'");
 		}
 
 	public static class Entry
@@ -137,14 +137,17 @@ public class Entity<T>
 
 		public final Class<?> type;
 
-		public Entry(ReflectFactory reflect, Class<?> clazz, String javaName, String setter) // TODO setter & javaName format
+		public Entry(ReflectFactory reflect, Class<?> clazz, String javaName, String setter) throws SQLException
 			{
 			this.javaName=javaName;
 
+			// TODO setter & javaName format
 			setter=setter!=null?setter:"set"+Character.toUpperCase(javaName.charAt(0))+javaName.substring(1);
 			String getter="get"+Character.toUpperCase(javaName.charAt(0))+javaName.substring(1);
 
 			Field field=Reflection.getField(clazz, javaName);
+			if(field==null)
+				throw new SQLException("field '"+javaName+"' not found on '"+clazz+"'");
 			Method sm=Reflection.getMethod(clazz, setter, field.getType());
 			Method gm=Reflection.getMethod(clazz, getter, field.getType());
 
@@ -165,12 +168,12 @@ public class Entity<T>
 		public boolean ai;
 		public boolean key;
 
-		public ColEntry(ReflectFactory reflect, Class<?> clazz, Column col, String jname, boolean ai, boolean key)
+		public ColEntry(ReflectFactory reflect, Class<?> clazz, Column col, String jname, boolean ai, boolean key) throws SQLException
 			{
 			this(reflect, clazz, col, jname, null, ai, key);
 			}
 
-		public ColEntry(ReflectFactory reflect, Class<?> clazz, Column col, String javaName, String setter, boolean ai, boolean key)
+		public ColEntry(ReflectFactory reflect, Class<?> clazz, Column col, String javaName, String setter, boolean ai, boolean key) throws SQLException
 			{
 			super(reflect, clazz, javaName, setter);
 			this.col=col;
@@ -183,7 +186,7 @@ public class Entity<T>
 		{
 		public Entity<?> entity;
 
-		public EntityEntry(ReflectFactory reflect, Class<?> clazz, Entity<?> entity, String javaName, String setter)
+		public EntityEntry(ReflectFactory reflect, Class<?> clazz, Entity<?> entity, String javaName, String setter) throws SQLException
 			{
 			super(reflect, clazz, javaName, setter);
 			this.entity=entity;
