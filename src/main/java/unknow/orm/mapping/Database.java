@@ -15,7 +15,7 @@ import java.util.*;
 
 import javax.sql.*;
 
-import org.apache.logging.log4j.*;
+import org.slf4j.*;
 
 import unknow.json.*;
 import unknow.json.JsonValue.JsonString;
@@ -29,7 +29,7 @@ public class Database
 	{
 	/** tables type requested */
 	private static final String[] types= {"VIEW", "TABLE"};
-	private static final Logger logger=LogManager.getFormatterLogger(Database.class);
+	private static final Logger log=LoggerFactory.getLogger(Database.class);
 
 	private Map<Class<?>,Entity<?>> mapping=new HashMap<Class<?>,Entity<?>>();
 
@@ -77,7 +77,7 @@ public class Database
 				e=new Entity.ColEntry(reflect, c, col, obj.optString("jname"), obj.optString("setter"), obj.optBoolean("key", false), obj.optBoolean("ai", col.isAutoIncrement()));
 				}
 
-			logger.info("> load col %s> %s", e, col);
+			log.info("> load col {}> {}", e, col);
 			if(e!=null)
 				entries.add(e);
 			}
@@ -135,7 +135,7 @@ public class Database
 				JsonObject colcfg=o.optJsonObject("columns");
 				JsonObject fields=o.optJsonObject("fields");
 
-				logger.info("load dao for %s", t);
+				log.info("load dao for {}", t);
 				if(!caseSensitive)
 					t=t.toLowerCase();
 				Table table=tables.get(t);
@@ -170,7 +170,7 @@ public class Database
 					String name=rs.getString("TABLE_NAME");
 //					String type=rs.getString("TABLE_TYPE");
 					String remark=rs.getString("REMARKS");
-					logger.trace("Found table '%s'", name);
+					log.trace("Found table '{}'", name);
 					Table table=new Table(metaData, name, schema, catalog, remark);
 
 					if(!caseSensitive)

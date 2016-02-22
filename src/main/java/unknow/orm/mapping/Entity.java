@@ -14,7 +14,7 @@ import java.lang.reflect.*;
 import java.sql.*;
 import java.util.*;
 
-import org.apache.logging.log4j.*;
+import org.slf4j.*;
 
 import unknow.common.*;
 import unknow.common.data.*;
@@ -22,7 +22,7 @@ import unknow.orm.reflect.*;
 
 public class Entity<T>
 	{
-	private static final Logger logger=LogManager.getFormatterLogger(Entity.class);
+	private static final Logger log=LoggerFactory.getLogger(Entity.class);
 
 	private Instantiator<T> instantiator;
 
@@ -105,7 +105,7 @@ public class Entity<T>
 					throw new SQLException(ex);
 					}
 				}
-			logger.trace("build '"+instantiator.className()+"' => '"+entity+"'");
+			log.trace("build '{}' => '{}'", instantiator.className(), entity);
 			return entity;
 			}
 		catch (ReflectException e)

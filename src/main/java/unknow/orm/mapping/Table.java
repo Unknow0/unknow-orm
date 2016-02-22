@@ -13,13 +13,13 @@ package unknow.orm.mapping;
 import java.sql.*;
 import java.util.*;
 
-import org.apache.logging.log4j.*;
+import org.slf4j.*;
 
 import unknow.json.*;
 
 public class Table
 	{
-	private static final Logger logger=LogManager.getFormatterLogger(Table.class);
+	private static final Logger log=LoggerFactory.getLogger(Table.class);
 
 	private String name;
 	private String schema;
@@ -46,7 +46,7 @@ public class Table
 				int lenth=rs.getInt("COLUMN_SIZE");
 				String ai=rs.getString("IS_AUTOINCREMENT");
 
-				logger.trace("%s> %s", name, colName);
+				log.trace("{}> {}", name, colName);
 				Column col=new Column(colName, sqlType, type, lenth, colRemark, ai);
 				list.add(col);
 				}

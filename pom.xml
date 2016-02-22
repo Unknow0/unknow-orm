@@ -17,8 +17,8 @@
 	<scm>
 		<url>https://github.com/Unknow0/unknow-orm.git</url>
 		<connection>scm:git:https://github.com/Unknow0/unknow-orm.git</connection>
-	  <tag>HEAD</tag>
-  </scm>
+		<tag>HEAD</tag>
+	</scm>
 	<developers>
 		<developer>
 			<id>Unknow0</id>
@@ -87,12 +87,12 @@
 		<dependency>
 			<groupId>unknow.common</groupId>
 			<artifactId>common</artifactId>
-			<version>1.3</version>
+			<version>1.4-SNAPSHOT</version>
 		</dependency>
 		<dependency>
-			<groupId>org.apache.logging.log4j</groupId>
-			<artifactId>log4j-core</artifactId>
-			<version>2.3</version>
+			<groupId>org.slf4j</groupId>
+			<artifactId>slf4j-api</artifactId>
+			<version>1.7.16</version>
 		</dependency>
 		<dependency>
 			<groupId>org.apache.derby</groupId>

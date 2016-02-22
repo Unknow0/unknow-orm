@@ -3,14 +3,14 @@ package unknow.orm.criteria;
 import java.sql.*;
 import java.util.*;
 
-import org.apache.logging.log4j.*;
+import org.slf4j.*;
 
 import unknow.orm.*;
 import unknow.orm.mapping.*;
 
 public class Criteria
 	{
-	private static final Logger log=LogManager.getFormatterLogger(Criteria.class);
+	private static final Logger log=LoggerFactory.getLogger(Criteria.class);
 
 	private Database db;
 	protected Entity<?> entity;
@@ -99,7 +99,7 @@ public class Criteria
 		if(map.containsKey(alias))
 			throw new SQLException("alias '"+alias+"' already defined");
 		map.put(alias, entity);
-		
+
 		for(Join j:join)
 			j.populateAlias(map);
 		}
