@@ -148,12 +148,10 @@ public class Entity<T>
 			Field field=Reflection.getField(clazz, javaName);
 			if(field==null)
 				throw new SQLException("field '"+javaName+"' not found on '"+clazz+"'");
-			Method sm=Reflection.getMethod(clazz, setter, field.getType());
-			Method gm=Reflection.getMethod(clazz, getter, field.getType());
 
 			this.type=field.getType();
-			this.setter=reflect.createSetter(field, sm);
-			this.getter=reflect.createGetter(field, gm);
+			this.setter=reflect.createSetter(clazz, javaName, setter);
+			this.getter=reflect.createGetter(clazz, javaName, getter);
 			}
 
 		public String toString()

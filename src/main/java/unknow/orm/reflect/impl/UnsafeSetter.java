@@ -20,7 +20,31 @@ public class UnsafeSetter implements Setter
 		Reflection.unsafe().putObject(o, field, v);
 		}
 
-	public static class Byte extends UnsafeSetter
+	public static UnsafeSetter get(Class<?> clazz, String field, String method)
+		{
+		Field f=Reflection.getField(clazz, field);
+		Class<?> type=f.getType();
+		if(type.isPrimitive())
+			{
+			if(type.equals(byte.class))
+				return new UnsafeSetter.Byte(f);
+			if(type.equals(char.class))
+				return new UnsafeSetter.Char(f);
+			if(type.equals(short.class))
+				return new UnsafeSetter.Short(f);
+			if(type.equals(int.class))
+				return new UnsafeSetter.Int(f);
+			if(type.equals(long.class))
+				return new UnsafeSetter.Long(f);
+			if(type.equals(float.class))
+				return new UnsafeSetter.Float(f);
+			if(type.equals(double.class))
+				return new UnsafeSetter.Double(f);
+			}
+		return new UnsafeSetter(f);
+		}
+
+	private static class Byte extends UnsafeSetter
 		{
 		public Byte(Field f)
 			{
@@ -33,7 +57,7 @@ public class UnsafeSetter implements Setter
 			}
 		}
 
-	public static class Char extends UnsafeSetter
+	private static class Char extends UnsafeSetter
 		{
 		public Char(Field f)
 			{
@@ -46,7 +70,7 @@ public class UnsafeSetter implements Setter
 			}
 		}
 
-	public static class Short extends UnsafeSetter
+	private static class Short extends UnsafeSetter
 		{
 		public Short(Field f)
 			{
@@ -59,7 +83,7 @@ public class UnsafeSetter implements Setter
 			}
 		}
 
-	public static class Int extends UnsafeSetter
+	private static class Int extends UnsafeSetter
 		{
 		public Int(Field f)
 			{
@@ -72,7 +96,7 @@ public class UnsafeSetter implements Setter
 			}
 		}
 
-	public static class Long extends UnsafeSetter
+	private static class Long extends UnsafeSetter
 		{
 		public Long(Field f)
 			{
@@ -85,7 +109,7 @@ public class UnsafeSetter implements Setter
 			}
 		}
 
-	public static class Float extends UnsafeSetter
+	private static class Float extends UnsafeSetter
 		{
 		public Float(Field f)
 			{
@@ -98,7 +122,7 @@ public class UnsafeSetter implements Setter
 			}
 		}
 
-	public static class Double extends UnsafeSetter
+	private static class Double extends UnsafeSetter
 		{
 		public Double(Field f)
 			{

@@ -1,6 +1,6 @@
 package unknow.orm.reflect;
 
-public class ReflectException extends Exception
+public class ReflectException extends RuntimeException
 	{
 	private static final long serialVersionUID=1L;
 

@@ -9,7 +9,7 @@ public final class ReflectInstantiator<T> extends Instantiator<T>
 		super(clazz);
 		}
 
-	public T newInstance() throws ReflectException
+	public T newInstance()
 		{
 		try
 			{

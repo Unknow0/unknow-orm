@@ -10,8 +10,9 @@ public final class UnsafeGetter implements Getter
 	{
 	private long field;
 
-	public UnsafeGetter(Field f)
+	public UnsafeGetter(Class<?> clazz, String fieldName)
 		{
+		Field f=Reflection.getField(clazz, fieldName);
 		field=Reflection.unsafe().objectFieldOffset(f);
 		}
 

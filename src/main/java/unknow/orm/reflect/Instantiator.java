@@ -1,6 +1,8 @@
 package unknow.orm.reflect;
 
-public abstract class Instantiator<T>
+import org.objenesis.instantiator.*;
+
+public abstract class Instantiator<T> implements ObjectInstantiator<T>
 	{
 	protected Class<T> clazz;
 
@@ -9,7 +11,7 @@ public abstract class Instantiator<T>
 		this.clazz=clazz;
 		}
 
-	public abstract T newInstance() throws ReflectException;
+	public abstract T newInstance();
 
 	public String className()
 		{
